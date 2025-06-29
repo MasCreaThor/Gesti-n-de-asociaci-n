@@ -1,13 +1,30 @@
-import Link from "next/link";
-import Layout from "../components/Layout";
+import { useEffect } from 'react'
+import { useRouter } from 'next/router'
+import { useAuth } from '../context/AuthContext'
 
-const IndexPage = () => (
-  <Layout title="Home | Next.js + TypeScript Example">
-    <h1>Hello Next.js 👋</h1>
-    <p>
-      <Link href="/about">About</Link>
-    </p>
-  </Layout>
-);
+export default function Home() {
+  const router = useRouter()
+  const { isAuthenticated, isLoading } = useAuth()
 
-export default IndexPage;
+  useEffect(() => {
+    if (!isLoading) {
+      if (isAuthenticated) {
+        router.push('/dashboard')
+      } else {
+        router.push('/login')
+      }
+    }
+  }, [isAuthenticated, isLoading, router])
+
+  return (
+    <div style={{ 
+      display: 'flex', 
+      justifyContent: 'center', 
+      alignItems: 'center', 
+      height: '100vh',
+      fontSize: '18px'
+    }}>
+      Cargando...
+    </div>
+  )
+}

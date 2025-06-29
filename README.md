@@ -1,61 +1,118 @@
-# TypeScript Next.js example
+# Sistema de Gestión de Asociación
 
-This is a really simple project that shows the usage of Next.js with TypeScript.
+Sistema web para gestionar una asociación, incluyendo registro de socios, reuniones, asistencia y documentación.
 
-## Deploy your own
+## Tecnologías Utilizadas
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/vercel/next.js/tree/canary/examples/with-typescript&project-name=with-typescript&repository-name=with-typescript)
+- **Frontend**: Next.js, React, TypeScript
+- **UI**: Chakra UI
+- **Base de Datos**: MongoDB con Mongoose
+- **Autenticación**: JWT
+- **Validación**: Zod
+- **Iconos**: React Icons
 
-## How to use it?
+## Funcionalidades
 
-Execute [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app) with [npm](https://docs.npmjs.com/cli/init), [Yarn](https://yarnpkg.com/lang/en/docs/cli/create/), or [pnpm](https://pnpm.io) to bootstrap the example:
+- 🔐 **Autenticación**: Login seguro para administrador
+- 👥 **Gestión de Socios**: CRUD completo de miembros
+- 📅 **Gestión de Reuniones**: Crear y gestionar reuniones
+- ✅ **Control de Asistencia**: Registrar asistencia por reunión
+- 📄 **Documentos**: Subida de documentos PDF
+- 📊 **Dashboard**: Estadísticas y resumen del sistema
+- 📱 **Responsive**: Diseño adaptable a móviles
 
-```bash
-npx create-next-app --example with-typescript with-typescript-app
+## Instalación
+
+1. **Clonar el repositorio**
+   ```bash
+   git clone <url-del-repositorio>
+   cd frontend
+   ```
+
+2. **Instalar dependencias**
+   ```bash
+   npm install
+   ```
+
+3. **Configurar variables de entorno**
+   ```bash
+   cp env.example .env.local
+   ```
+   
+   Editar `.env.local` con tus configuraciones:
+   ```env
+   MONGODB_URI=mongodb://localhost:27017/asociacion
+   JWT_SECRET=tu-clave-secreta-super-segura-para-jwt
+   ```
+
+4. **Configurar MongoDB**
+   - Instalar MongoDB localmente o usar MongoDB Atlas
+   - Crear una base de datos llamada `asociacion`
+
+5. **Crear usuario administrador**
+   ```bash
+   # Ejecutar el servidor de desarrollo
+   npm run dev
+   ```
+   
+   Luego hacer una petición POST a `/api/auth/setup` con:
+   ```json
+   {
+     "email": "admin@asociacion.com",
+     "password": "tu-contraseña",
+     "name": "Administrador"
+   }
+   ```
+
+6. **Ejecutar el proyecto**
+   ```bash
+   npm run dev
+   ```
+
+## Estructura del Proyecto
+
+```
+frontend/
+├── components/          # Componentes reutilizables
+│   ├── layout/         # Layouts y navegación
+│   ├── ui/            # Componentes de UI
+│   └── forms/         # Formularios
+├── pages/             # Páginas de Next.js
+│   ├── api/          # APIs del backend
+│   ├── socios/       # Gestión de socios
+│   ├── reuniones/    # Gestión de reuniones
+│   └── dashboard/    # Dashboard principal
+├── lib/              # Utilidades y configuración
+│   ├── models/       # Modelos de MongoDB
+│   └── mongodb.ts    # Configuración de BD
+├── context/          # Contextos de React
+└── public/           # Archivos estáticos
 ```
 
-```bash
-yarn create next-app --example with-typescript with-typescript-app
-```
+## Uso
 
-```bash
-pnpm create next-app --example with-typescript with-typescript-app
-```
+1. **Acceder al sistema**: http://localhost:3000
+2. **Login**: Usar las credenciales del administrador
+3. **Dashboard**: Ver estadísticas y accesos rápidos
+4. **Socios**: Gestionar miembros de la asociación
+5. **Reuniones**: Crear y gestionar reuniones
+6. **Reportes**: Ver estadísticas y análisis
 
-Deploy it to the cloud with [Vercel](https://vercel.com/new?utm_source=github&utm_medium=readme&utm_campaign=next-example) ([Documentation](https://nextjs.org/docs/deployment)).
+## Scripts Disponibles
 
-## Notes
+- `npm run dev`: Ejecutar en modo desarrollo
+- `npm run build`: Construir para producción
+- `npm run start`: Ejecutar en modo producción
+- `npm run type-check`: Verificar tipos de TypeScript
 
-This example shows how to integrate the TypeScript type system into Next.js. Since TypeScript is supported out of the box with Next.js, all we have to do is to install TypeScript.
+## Contribución
 
-```shell
-npm install --save-dev typescript
-```
+1. Fork el proyecto
+2. Crear una rama para tu feature
+3. Commit tus cambios
+4. Push a la rama
+5. Abrir un Pull Request
 
-```shell
-yarn install --save-dev typescript
-```
+## Licencia
 
-```shell
-pnpm install --save-dev typescript
-```
-
-To enable TypeScript's features, we install the type declarations for React and Node.
-
-```shell
-npm install --save-dev @types/react @types/react-dom @types/node
-```
-
-```shell
-yarn install --save-dev @types/react @types/react-dom @types/node
-```
-
-```shell
-pnpm install --save-dev @types/react @types/react-dom @types/node
-```
-
-When we run `next dev` the next time, Next.js will start looking for any `.ts` or `.tsx` files in our project and builds it. It even automatically creates a `tsconfig.json` file for our project with the recommended settings.
-
-Next.js has built-in TypeScript declarations, so we'll get autocompletion for Next.js' modules straight away.
-
-A `type-check` script is also added to `package.json`, which runs TypeScript's `tsc` CLI in `noEmit` mode to run type-checking separately. You can then include this, for example, in your `test` scripts.
+Este proyecto está bajo la Licencia MIT.
