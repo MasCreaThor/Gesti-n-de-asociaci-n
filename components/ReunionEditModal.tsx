@@ -1,41 +1,70 @@
-import React, { useState } from 'react'
-import MainLayout from '../../components/layout/MainLayout'
-import { useAuth } from '../../context/AuthContext'
-import { useRouter } from 'next/router'
-import { useTheme } from '../../context/ThemeContext'
+import React, { useState, useEffect } from 'react'
+import { useTheme } from '../context/ThemeContext'
 
-interface FormData {
+interface Reunion {
+  _id: string
   titulo: string
   descripcion: string
   fecha: string
   hora: string
   lugar: string
   tipo: string
-  anotaciones: string
+  estado: string
+  anotaciones?: string
 }
 
-export default function NuevaReunionPage() {
-  const { isAuthenticated, isLoading } = useAuth()
-  const router = useRouter()
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [formData, setFormData] = useState<FormData>({
-    titulo: '',
-    descripcion: '',
-    fecha: '',
-    hora: '',
-    lugar: '',
-    tipo: 'reunion_ordinaria',
-    anotaciones: '',
-  })
+interface ReunionEditModalProps {
+  reunion: Reunion | null
+  isOpen: boolean
+  onClose: () => void
+  onSave: (data: Partial<Reunion>) => void
+  isLoading?: boolean
+}
 
-  // Colores para modo oscuro usando el contexto
+export default function ReunionEditModal({
+  reunion,
+  isOpen,
+  onClose,
+  onSave,
+  isLoading = false
+}: ReunionEditModalProps) {
   const { isDark } = useTheme()
+  
   const bgColor = isDark ? '#2D3748' : 'white'
   const borderColor = isDark ? '#4A5568' : '#E2E8F0'
   const textColor = isDark ? 'white' : '#2D3748'
   const labelColor = isDark ? '#A0AEC0' : '#4A5568'
   const inputBgColor = isDark ? '#4A5568' : 'white'
   const inputBorderColor = isDark ? '#718096' : '#E2E8F0'
+
+  const [formData, setFormData] = useState<Partial<Reunion>>({
+    titulo: '',
+    descripcion: '',
+    fecha: '',
+    hora: '',
+    lugar: '',
+    tipo: 'reunion_ordinaria',
+    estado: 'programada',
+    anotaciones: ''
+  })
+
+  useEffect(() => {
+    if (reunion) {
+      const fecha = new Date(reunion.fecha)
+      const fechaFormateada = fecha.toISOString().split('T')[0]
+      
+      setFormData({
+        titulo: reunion.titulo,
+        descripcion: reunion.descripcion,
+        fecha: fechaFormateada,
+        hora: reunion.hora,
+        lugar: reunion.lugar,
+        tipo: reunion.tipo,
+        estado: reunion.estado,
+        anotaciones: reunion.anotaciones || ''
+      })
+    }
+  }, [reunion])
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target
@@ -45,77 +74,62 @@ export default function NuevaReunionPage() {
     }))
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    setIsSubmitting(true)
-
-    try {
-      const response = await fetch('/api/reuniones', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(formData),
-      })
-
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || 'Error al crear la reunión')
-      }
-
-      const reunion = await response.json()
-      alert('Reunión creada exitosamente')
-      router.push('/reuniones')
-    } catch (error) {
-      console.error('Error:', error)
-      alert(error instanceof Error ? error.message : 'Error al crear la reunión')
-    } finally {
-      setIsSubmitting(false)
-    }
+    onSave(formData)
   }
 
-  if (isLoading) {
-    return (
-      <MainLayout>
-        <div style={{ textAlign: 'center', padding: '40px' }}>
-          Cargando...
-        </div>
-      </MainLayout>
-    )
-  }
-
-  if (!isAuthenticated) {
-    return null
-  }
+  if (!isOpen || !reunion) return null
 
   return (
-    <MainLayout>
-      <div style={{ padding: '20px', maxWidth: '800px', margin: '0 auto' }}>
+    <div
+      style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 1000,
+      }}
+      onClick={onClose}
+    >
+      <div
+        style={{
+          backgroundColor: bgColor,
+          borderRadius: '8px',
+          padding: '30px',
+          maxWidth: '800px',
+          width: '90%',
+          maxHeight: '90vh',
+          overflow: 'auto',
+          border: `1px solid ${borderColor}`,
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-          <h1 style={{ fontSize: '24px', fontWeight: 'bold', color: textColor }}>Crear Nueva Reunión</h1>
+          <h2 style={{ fontSize: '24px', fontWeight: 'bold', color: textColor }}>
+            ✏️ Editar Reunión
+          </h2>
           <button
+            onClick={onClose}
             style={{
-              backgroundColor: '#666',
-              color: 'white',
-              padding: '8px 16px',
+              background: 'none',
               border: 'none',
-              borderRadius: '4px',
+              fontSize: '24px',
               cursor: 'pointer',
+              color: labelColor,
             }}
-            onClick={() => router.back()}
           >
-            Volver
+            ✕
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} style={{ 
-          backgroundColor: bgColor, 
-          padding: '30px', 
-          borderRadius: '8px', 
-          boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-          border: `1px solid ${borderColor}`
-        }}>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px' }}>
+        <form onSubmit={handleSubmit}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px', marginBottom: '20px' }}>
             {/* Información Básica */}
             <div>
               <h3 style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '15px', color: '#3182ce' }}>
@@ -191,6 +205,31 @@ export default function NuevaReunionPage() {
                   <option value="reunion_ordinaria">Reunión Ordinaria</option>
                   <option value="asamblea">Asamblea General</option>
                   <option value="reunion_extraordinaria">Reunión Extraordinaria</option>
+                </select>
+              </div>
+
+              <div style={{ marginBottom: '15px' }}>
+                <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold', color: labelColor }}>
+                  Estado
+                </label>
+                <select
+                  name="estado"
+                  value={formData.estado}
+                  onChange={handleInputChange}
+                  style={{
+                    width: '100%',
+                    padding: '10px',
+                    border: `1px solid ${inputBorderColor}`,
+                    borderRadius: '4px',
+                    fontSize: '14px',
+                    backgroundColor: inputBgColor,
+                    color: textColor
+                  }}
+                >
+                  <option value="programada">🟢 Programada</option>
+                  <option value="en_curso">🟡 En Curso</option>
+                  <option value="finalizada">🔵 Finalizada</option>
+                  <option value="cancelada">🔴 Cancelada</option>
                 </select>
               </div>
             </div>
@@ -271,7 +310,7 @@ export default function NuevaReunionPage() {
           </div>
 
           {/* Anotaciones */}
-          <div style={{ marginTop: '20px' }}>
+          <div style={{ marginBottom: '20px' }}>
             <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold', color: labelColor }}>
               Anotaciones Adicionales
             </label>
@@ -295,42 +334,42 @@ export default function NuevaReunionPage() {
           </div>
 
           {/* Botones */}
-          <div style={{ display: 'flex', gap: '10px', marginTop: '30px', justifyContent: 'flex-end' }}>
+          <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
             <button
               type="button"
-              onClick={() => router.back()}
-              disabled={isSubmitting}
+              onClick={onClose}
+              disabled={isLoading}
               style={{
                 backgroundColor: '#666',
                 color: 'white',
                 padding: '12px 24px',
                 border: 'none',
                 borderRadius: '4px',
-                cursor: isSubmitting ? 'not-allowed' : 'pointer',
+                cursor: isLoading ? 'not-allowed' : 'pointer',
                 fontSize: '14px',
-                opacity: isSubmitting ? 0.6 : 1
+                opacity: isLoading ? 0.6 : 1
               }}
             >
               Cancelar
             </button>
             <button
               type="submit"
-              disabled={isSubmitting}
+              disabled={isLoading}
               style={{
-                backgroundColor: isSubmitting ? '#ccc' : '#38a169',
+                backgroundColor: isLoading ? '#ccc' : '#38a169',
                 color: 'white',
                 padding: '12px 24px',
                 border: 'none',
                 borderRadius: '4px',
-                cursor: isSubmitting ? 'not-allowed' : 'pointer',
+                cursor: isLoading ? 'not-allowed' : 'pointer',
                 fontSize: '14px'
               }}
             >
-              {isSubmitting ? 'Creando...' : 'Crear Reunión'}
+              {isLoading ? 'Guardando...' : 'Guardar Cambios'}
             </button>
           </div>
         </form>
       </div>
-    </MainLayout>
+    </div>
   )
 } 
