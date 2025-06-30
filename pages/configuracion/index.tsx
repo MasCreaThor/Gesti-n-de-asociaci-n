@@ -86,7 +86,7 @@ interface Configuracion {
 }
 
 const ConfiguracionPage = () => {
-  const { user } = useAuth()
+  const { user, isLoading } = useAuth()
   const router = useRouter()
   const toast = useToast()
   
@@ -126,10 +126,14 @@ const ConfiguracionPage = () => {
 
   // Verificar autenticación
   useEffect(() => {
-    if (!user) {
-      router.push('/login')
+    if (!isLoading && !user) {
+      if (typeof window !== 'undefined' && typeof (window as any).redirectToLoginWithOriginalPath === 'function') {
+        (window as any).redirectToLoginWithOriginalPath()
+      } else {
+        router.push('/login')
+      }
     }
-  }, [user, router])
+  }, [isLoading, user, router])
 
   // Cargar configuración
   useEffect(() => {

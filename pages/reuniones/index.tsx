@@ -41,7 +41,11 @@ export default function ReunionesPage() {
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
-      router.push('/login')
+      if (typeof window !== 'undefined' && typeof (window as any).redirectToLoginWithOriginalPath === 'function') {
+        (window as any).redirectToLoginWithOriginalPath()
+      } else {
+        router.push('/login')
+      }
     }
   }, [isAuthenticated, isLoading, router])
 

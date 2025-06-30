@@ -20,9 +20,7 @@ export default function Login() {
   const router = useRouter()
 
   useEffect(() => {
-    if (isAuthenticated) {
-      router.push('/dashboard')
-    }
+    // No redirigir automáticamente aquí, la lógica está en AuthContext
   }, [isAuthenticated, router])
 
   const handleSubmit = async (e: React.FormEvent) => {

@@ -43,7 +43,19 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     } else {
       setIsLoading(false)
     }
+    // Exponer la función globalmente para acceso desde otras páginas
+    if (typeof window !== 'undefined') {
+      (window as any).redirectToLoginWithOriginalPath = redirectToLoginWithOriginalPath;
+    }
   }, [])
+
+  // Guardar la ruta original antes de redirigir al login
+  const redirectToLoginWithOriginalPath = () => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('originalPath', window.location.pathname)
+    }
+    router.push('/login')
+  }
 
   const verifyToken = async (token: string) => {
     try {
@@ -81,7 +93,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         const { token, user: userData } = await response.json()
         localStorage.setItem('token', token)
         setUser(userData)
-        router.push('/dashboard')
+        // Redirigir a la ruta original si existe, si no, al dashboard
+        const originalPath = localStorage.getItem('originalPath')
+        if (originalPath && originalPath !== '/login') {
+          localStorage.removeItem('originalPath')
+          router.push(originalPath)
+        } else {
+          router.push('/dashboard')
+        }
         return true
       } else {
         return false

@@ -60,7 +60,7 @@ interface Acta {
 }
 
 const ActasPage = () => {
-  const { user } = useAuth()
+  const { user, isLoading } = useAuth()
   const router = useRouter()
   const toast = useToast()
   const { isOpen, onOpen, onClose } = useDisclosure()
@@ -99,10 +99,14 @@ const ActasPage = () => {
 
   // Verificar autenticación
   useEffect(() => {
-    if (!user) {
-      router.push('/login')
+    if (!isLoading && !user) {
+      if (typeof window !== 'undefined' && typeof (window as any).redirectToLoginWithOriginalPath === 'function') {
+        (window as any).redirectToLoginWithOriginalPath()
+      } else {
+        router.push('/login')
+      }
     }
-  }, [user, router])
+  }, [isLoading, user, router])
 
   // Cargar datos
   useEffect(() => {
