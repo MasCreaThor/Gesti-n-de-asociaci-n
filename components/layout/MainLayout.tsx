@@ -18,6 +18,7 @@ import {
   FiMenu,
   FiLogOut,
   FiBarChart,
+  FiFileText,
 } from 'react-icons/fi'
 import { useAuth } from '../../context/AuthContext'
 import { useRouter } from 'next/router'
@@ -34,6 +35,7 @@ const LinkItems: Array<LinkItemProps> = [
   { name: 'Dashboard', icon: FiHome, href: '/dashboard' },
   { name: 'Socios', icon: FiUsers, href: '/socios' },
   { name: 'Reuniones', icon: FiCalendar, href: '/reuniones' },
+  { name: 'Actas', icon: FiFileText, href: '/actas' },
   { name: 'Reportes', icon: FiBarChart, href: '/reportes' },
 ]
 
