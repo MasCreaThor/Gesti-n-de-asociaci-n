@@ -399,9 +399,15 @@ const ActasPage = () => {
                           overflowY="auto"
                           fontSize="sm"
                           whiteSpace="pre-wrap"
+                          fontFamily="monospace"
+                          border="1px"
+                          borderColor={borderColor}
                         >
                           {acta.actaGenerada}
                         </Box>
+                        <Text fontSize="xs" color={textColor} mt={1}>
+                          💡 Haz clic en "Ver Completa" para editar o exportar el acta
+                        </Text>
                       </Box>
                     )}
                     

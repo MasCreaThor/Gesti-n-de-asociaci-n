@@ -19,6 +19,7 @@ import {
   FiLogOut,
   FiBarChart,
   FiFileText,
+  FiSettings,
 } from 'react-icons/fi'
 import { useAuth } from '../../context/AuthContext'
 import { useRouter } from 'next/router'
@@ -37,6 +38,7 @@ const LinkItems: Array<LinkItemProps> = [
   { name: 'Reuniones', icon: FiCalendar, href: '/reuniones' },
   { name: 'Actas', icon: FiFileText, href: '/actas' },
   { name: 'Reportes', icon: FiBarChart, href: '/reportes' },
+  { name: 'Configuración', icon: FiSettings, href: '/configuracion' },
 ]
 
 interface SidebarProps extends BoxProps {

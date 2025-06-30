@@ -31,6 +31,7 @@ const ActaViewModal = ({ isOpen, onClose, acta, onUpdate }: ActaViewModalProps) 
   const [isEditing, setIsEditing] = useState(false)
   const [editedActa, setEditedActa] = useState('')
   const [saving, setSaving] = useState(false)
+  const [exporting, setExporting] = useState(false)
   
   const bg = useColorModeValue('white', 'gray.800')
   const borderColor = useColorModeValue('gray.200', 'gray.700')
@@ -81,7 +82,7 @@ const ActaViewModal = ({ isOpen, onClose, acta, onUpdate }: ActaViewModalProps) 
     }
   }
 
-  const handleExport = () => {
+  const handleExportTXT = () => {
     if (!acta) return
 
     const contenido = `
@@ -111,10 +112,62 @@ Generado el: ${new Date().toLocaleDateString('es-CO')}
 
     toast({
       title: 'Éxito',
-      description: 'Acta exportada correctamente',
+      description: 'Acta exportada en formato TXT',
       status: 'success',
       duration: 3000,
     })
+  }
+
+  const handleExportDOCX = async () => {
+    if (!acta) return
+
+    try {
+      setExporting(true)
+      const response = await fetch('/api/actas/exportar-docx', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ actaId: acta._id })
+      })
+
+      if (response.ok) {
+        const blob = await response.blob()
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = `acta-${acta.titulo.replace(/[^a-z0-9]/gi, '-').toLowerCase()}-${new Date(acta.fecha).toISOString().split('T')[0]}.docx`
+        document.body.appendChild(a)
+        a.click()
+        document.body.removeChild(a)
+        URL.revokeObjectURL(url)
+
+        toast({
+          title: 'Éxito',
+          description: 'Acta exportada en formato DOCX',
+          status: 'success',
+          duration: 3000,
+        })
+      } else {
+        const error = await response.json()
+        toast({
+          title: 'Error',
+          description: error.error || 'Error al exportar DOCX',
+          status: 'error',
+          duration: 3000,
+        })
+      }
+    } catch (error) {
+      console.error('Error al exportar DOCX:', error)
+      toast({
+        title: 'Error',
+        description: 'Error al exportar DOCX',
+        status: 'error',
+        duration: 3000,
+      })
+    } finally {
+      setExporting(false)
+    }
   }
 
   if (!acta) return null
@@ -237,12 +290,22 @@ Generado el: ${new Date().toLocaleDateString('es-CO')}
               </Button>
             )}
             {acta.actaGenerada && (
-              <Button
-                colorScheme="green"
-                onClick={handleExport}
-              >
-                Exportar
-              </Button>
+              <>
+                <Button
+                  colorScheme="green"
+                  onClick={handleExportTXT}
+                >
+                  Exportar TXT
+                </Button>
+                <Button
+                  colorScheme="purple"
+                  onClick={handleExportDOCX}
+                  isLoading={exporting}
+                  loadingText="Exportando..."
+                >
+                  Exportar DOCX
+                </Button>
+              </>
             )}
           </HStack>
         </ModalFooter>
