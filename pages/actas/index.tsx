@@ -100,7 +100,7 @@ const ActasPage = () => {
   const [reuniones, setReuniones] = useState<Reunion[]>([])
   const [actas, setActas] = useState<Acta[]>([])
   const [loading, setLoading] = useState(false)
-  const [generating, setGenerating] = useState(false)
+  const [generating, setGenerating] = useState<string | null>(null)
   const [selectedActa, setSelectedActa] = useState<Acta | null>(null)
   const [editingActa, setEditingActa] = useState<Acta | null>(null)
   const [deletingActa, setDeletingActa] = useState<Acta | null>(null)
@@ -120,6 +120,7 @@ const ActasPage = () => {
   const [exporting, setExporting] = useState(false)
   const [saving, setSaving] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [mostrarFiltrosAvanzados, setMostrarFiltrosAvanzados] = useState(false)
 
   // Función para convertir tipos de reunión a formato legible
   const getTipoReunionLegible = (tipo: string) => {
@@ -129,6 +130,31 @@ const ActasPage = () => {
       'reunion_extraordinaria': 'Reunión Extraordinaria'
     }
     return tipos[tipo as keyof typeof tipos] || tipo
+  }
+
+  const formatearHora12h = (hora: string) => {
+    try {
+      // Si ya está en formato 12h (contiene AM/PM), devolverlo tal como está
+      if (hora.includes('AM') || hora.includes('PM') || hora.includes('am') || hora.includes('pm')) {
+        return hora
+      }
+      
+      // Si está en formato 24h, convertirlo a 12h
+      const [horas, minutos] = hora.split(':')
+      const horaNum = parseInt(horas)
+      const minutosNum = parseInt(minutos)
+      
+      if (isNaN(horaNum) || isNaN(minutosNum)) {
+        return hora // Si no se puede parsear, devolver la hora original
+      }
+      
+      const periodo = horaNum >= 12 ? 'PM' : 'AM'
+      const hora12 = horaNum === 0 ? 12 : horaNum > 12 ? horaNum - 12 : horaNum
+      
+      return `${hora12}:${minutos.toString().padStart(2, '0')} ${periodo}`
+    } catch (error) {
+      return hora // En caso de error, devolver la hora original
+    }
   }
 
   // Verificar autenticación
@@ -314,7 +340,7 @@ const ActasPage = () => {
 
   const generarConIA = async (actaId: string) => {
     try {
-      setGenerating(true)
+      setGenerating(actaId)
       const response = await fetch('/api/actas/generar-ia', {
         method: 'POST',
         headers: {
@@ -325,7 +351,9 @@ const ActasPage = () => {
 
       if (response.ok) {
         const { acta } = await response.json()
-        setActas(prev => prev.map(a => a._id === actaId ? acta : a))
+        const actasActualizadas = actas.map(a => a._id === actaId ? acta : a)
+        setActas(actasActualizadas)
+        aplicarFiltros(actasActualizadas)
         
         toast({
           title: 'Éxito',
@@ -351,7 +379,52 @@ const ActasPage = () => {
         duration: 3000,
       })
     } finally {
-      setGenerating(false)
+      setGenerating(null)
+    }
+  }
+
+  const regenerarConIA = async (actaId: string) => {
+    try {
+      setGenerating(actaId)
+      const response = await fetch('/api/actas/generar-ia', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ actaId, regenerar: true })
+      })
+
+      if (response.ok) {
+        const { acta } = await response.json()
+        const actasActualizadas = actas.map(a => a._id === actaId ? acta : a)
+        setActas(actasActualizadas)
+        aplicarFiltros(actasActualizadas)
+        
+        toast({
+          title: 'Éxito',
+          description: 'Acta regenerada exitosamente con IA',
+          status: 'success',
+          duration: 3000,
+        })
+      } else {
+        const error = await response.json()
+        toast({
+          title: 'Error',
+          description: error.error || 'Error al regenerar acta con IA',
+          status: 'error',
+          duration: 3000,
+        })
+      }
+    } catch (error) {
+      console.error('Error al regenerar acta con IA:', error)
+      toast({
+        title: 'Error',
+        description: 'Error al regenerar acta con IA',
+        status: 'error',
+        duration: 3000,
+      })
+    } finally {
+      setGenerating(null)
     }
   }
 
@@ -585,12 +658,22 @@ const ActasPage = () => {
             <VStack spacing={4} align="stretch">
               <HStack justify="space-between" align="center">
                 <Heading size="md">Filtros de Búsqueda</Heading>
-                <Button size="sm" variant="outline" onClick={limpiarFiltros}>
-                  Limpiar Filtros
-                </Button>
+                <HStack spacing={2}>
+                  <Button 
+                    size="sm" 
+                    variant="outline" 
+                    onClick={() => setMostrarFiltrosAvanzados(!mostrarFiltrosAvanzados)}
+                    leftIcon={mostrarFiltrosAvanzados ? <span>▼</span> : <span>▶</span>}
+                  >
+                    {mostrarFiltrosAvanzados ? 'Ocultar filtros' : 'Filtros avanzados'}
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={limpiarFiltros}>
+                    Limpiar Filtros
+                  </Button>
+                </HStack>
               </HStack>
               
-              {/* Búsqueda por texto */}
+              {/* Búsqueda por texto - siempre visible */}
               <Box>
                 <Text mb={2} fontWeight="medium">Buscar por título o lugar:</Text>
                 <Input
@@ -600,66 +683,71 @@ const ActasPage = () => {
                 />
               </Box>
               
-              {/* Filtros en grid */}
-              <Grid templateColumns={{ base: '1fr', md: 'repeat(3, 1fr)', lg: 'repeat(4, 1fr)' }} gap={4}>
-                {/* Rango de fechas */}
-                <GridItem>
-                  <Text mb={2} fontWeight="medium">Fecha desde:</Text>
-                  <Input
-                    type="date"
-                    value={filtroFecha}
-                    onChange={(e) => setFiltroFecha(e.target.value)}
-                  />
-                </GridItem>
-                <GridItem>
-                  <Text mb={2} fontWeight="medium">Fecha hasta:</Text>
-                  <Input
-                    type="date"
-                    value={filtroFechaFin}
-                    onChange={(e) => setFiltroFechaFin(e.target.value)}
-                  />
-                </GridItem>
-                
-                {/* Tipo de reunión */}
-                <GridItem>
-                  <Text mb={2} fontWeight="medium">Tipo de reunión:</Text>
-                  <Select
-                    value={filtroTipo}
-                    onChange={(e) => setFiltroTipo(e.target.value)}
-                    placeholder="Todos los tipos"
-                  >
-                    <option value="asamblea">Asamblea</option>
-                    <option value="reunion_ordinaria">Reunión Ordinaria</option>
-                    <option value="reunion_extraordinaria">Reunión Extraordinaria</option>
-                  </Select>
-                </GridItem>
-                
-                {/* Estado */}
-                <GridItem>
-                  <Text mb={2} fontWeight="medium">Estado:</Text>
-                  <Select
-                    value={filtroEstado}
-                    onChange={(e) => setFiltroEstado(e.target.value)}
-                    placeholder="Todos los estados"
-                  >
-                    <option value="borrador">Borrador</option>
-                    <option value="finalizada">Finalizada</option>
-                  </Select>
-                </GridItem>
-              </Grid>
-              
-              {/* Filtro por IA */}
-              <Box>
-                <Text mb={2} fontWeight="medium">Acta generada por IA:</Text>
-                <Select
-                  value={filtroGeneradaIA}
-                  onChange={(e) => setFiltroGeneradaIA(e.target.value)}
-                  placeholder="Todas las actas"
-                >
-                  <option value="con_ia">Con IA generada</option>
-                  <option value="sin_ia">Sin IA generada</option>
-                </Select>
-              </Box>
+              {/* Filtros avanzados - condicionales */}
+              {mostrarFiltrosAvanzados && (
+                <>
+                  {/* Filtros en grid */}
+                  <Grid templateColumns={{ base: '1fr', md: 'repeat(3, 1fr)', lg: 'repeat(4, 1fr)' }} gap={4}>
+                    {/* Rango de fechas */}
+                    <GridItem>
+                      <Text mb={2} fontWeight="medium">Fecha desde:</Text>
+                      <Input
+                        type="date"
+                        value={filtroFecha}
+                        onChange={(e) => setFiltroFecha(e.target.value)}
+                      />
+                    </GridItem>
+                    <GridItem>
+                      <Text mb={2} fontWeight="medium">Fecha hasta:</Text>
+                      <Input
+                        type="date"
+                        value={filtroFechaFin}
+                        onChange={(e) => setFiltroFechaFin(e.target.value)}
+                      />
+                    </GridItem>
+                    
+                    {/* Tipo de reunión */}
+                    <GridItem>
+                      <Text mb={2} fontWeight="medium">Tipo de reunión:</Text>
+                      <Select
+                        value={filtroTipo}
+                        onChange={(e) => setFiltroTipo(e.target.value)}
+                        placeholder="Todos los tipos"
+                      >
+                        <option value="asamblea">Asamblea</option>
+                        <option value="reunion_ordinaria">Reunión Ordinaria</option>
+                        <option value="reunion_extraordinaria">Reunión Extraordinaria</option>
+                      </Select>
+                    </GridItem>
+                    
+                    {/* Estado */}
+                    <GridItem>
+                      <Text mb={2} fontWeight="medium">Estado:</Text>
+                      <Select
+                        value={filtroEstado}
+                        onChange={(e) => setFiltroEstado(e.target.value)}
+                        placeholder="Todos los estados"
+                      >
+                        <option value="borrador">Borrador</option>
+                        <option value="finalizada">Finalizada</option>
+                      </Select>
+                    </GridItem>
+                  </Grid>
+                  
+                  {/* Filtro por IA */}
+                  <Box>
+                    <Text mb={2} fontWeight="medium">Acta generada por IA:</Text>
+                    <Select
+                      value={filtroGeneradaIA}
+                      onChange={(e) => setFiltroGeneradaIA(e.target.value)}
+                      placeholder="Todas las actas"
+                    >
+                      <option value="con_ia">Con IA generada</option>
+                      <option value="sin_ia">Sin IA generada</option>
+                    </Select>
+                  </Box>
+                </>
+              )}
               
               {/* Resumen de filtros aplicados */}
               {(filtroBusqueda || filtroFecha || filtroFechaFin || filtroTipo || filtroEstado || filtroGeneradaIA) && (
@@ -770,7 +858,7 @@ const ActasPage = () => {
                           </HStack>
                           <HStack spacing={2} fontSize="sm" color={useColorModeValue('gray.600', 'green.200')}>
                             <span>🕐</span>
-                            <Text>{acta.hora}</Text>
+                            <Text>{formatearHora12h(acta.hora)}</Text>
                           </HStack>
                           <HStack spacing={2} fontSize="sm" color={useColorModeValue('gray.600', 'green.200')}>
                             <span>📍</span>
@@ -879,23 +967,36 @@ const ActasPage = () => {
                             variant="outline"
                             flex="1"
                             onClick={() => generarConIA(acta._id)}
-                            isLoading={generating}
+                            isLoading={generating === acta._id}
                             loadingText="Generando..."
                             leftIcon={<span>🤖</span>}
                           >
                             Generar con IA
                           </Button>
                         ) : (
-                          <Button
-                            size="sm"
-                            colorScheme="green"
-                            leftIcon={<span>📄</span>}
-                            onClick={() => exportarDocx(acta._id)}
-                            isLoading={exporting}
-                            loadingText="Exportando..."
-                          >
-                            Exportar DOCX
-                          </Button>
+                          <>
+                            <Button
+                              size="sm"
+                              colorScheme="green"
+                              leftIcon={<span>📄</span>}
+                              onClick={() => exportarDocx(acta._id)}
+                              isLoading={exporting}
+                              loadingText="Exportando..."
+                            >
+                              Exportar DOCX
+                            </Button>
+                            <Button
+                              size="sm"
+                              colorScheme="purple"
+                              variant="outline"
+                              onClick={() => regenerarConIA(acta._id)}
+                              isLoading={generating === acta._id}
+                              loadingText="Regenerando..."
+                              leftIcon={<span>🔄</span>}
+                            >
+                              Regenerar
+                            </Button>
+                          </>
                         )}
                         <Button
                           size="sm"

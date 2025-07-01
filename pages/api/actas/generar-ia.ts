@@ -14,7 +14,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   try {
     await dbConnect()
-    const { actaId } = req.body
+    const { actaId, regenerar } = req.body
     if (!actaId) {
       return res.status(400).json({ error: 'ID de acta requerido' })
     }
@@ -25,6 +25,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       .exec()
     if (!acta) {
       return res.status(404).json({ error: 'Acta no encontrada' })
+    }
+
+    // Si no es regeneración y ya existe un acta generado, verificar
+    if (!regenerar && acta.actaGenerada && acta.actaGenerada.trim() !== '') {
+      return res.status(400).json({ error: 'Ya existe un acta generado para esta reunión. Use "Regenerar" para crear una nueva versión.' })
     }
 
     // Obtener la configuración del sistema
@@ -250,6 +255,9 @@ ${deliberacionesFormateadas}
 **ACUERDOS Y TAREAS:**
 ${acuerdosFormateados}
 
+**APUNTES ORIGINALES PARA ANÁLISIS DE CONCLUSIÓN:**
+${acta.apuntes}
+
 **REDacta EL ACTA FINAL SIGUIENDO ESTE FORMATO OBLIGATORIO:**
 
 <p align="center"><strong>${configuracion.nombreAsociacion.toUpperCase()}</strong></p>
@@ -291,14 +299,44 @@ ${deliberacionesFormateadas.replace(/\n/g, '<br>')}
 ${acuerdosFormateados.replace(/\n/g, '<br>')}
 
 <br>
-**INSTRUCCIONES ESPECÍFICAS PARA LA PARTE FINAL:**
-- Basándote en la información de los apuntes originales, redacta una conclusión natural que incluya:
-  - La hora real de finalización si se menciona en los apuntes
-  - Cualquier anuncio o recordatorio importante (próxima reunión, fechas límite, etc.)
-  - Un cierre apropiado que refleje el tono y contexto de la reunión
-- Si no hay información específica sobre la finalización, usa el texto estándar: "No habiendo más asuntos que tratar, se levanta la sesión."
-- NO incluyas la tabla de firmas, solo la conclusión del acta.
-- Mantén el formato profesional con sangrías (&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;) y saltos de línea apropiados.
+**INSTRUCCIONES CRÍTICAS PARA LA CONCLUSIÓN:**
+IMPORTANTE: Después de la sección "ACUERDOS Y TAREAS", DEBES incluir una conclusión natural del acta.
+
+**ANALIZA LOS APUNTES ORIGINALES** para encontrar información sobre:
+- Hora de inicio y finalización de la reunión (busca patrones como "2:00 PM - 3:45 PM", "de 2pm a 3:45pm", "inició a las 2:00", "terminó a las 3:45", etc.)
+- Anuncios sobre próxima reunión
+- Recordatorios importantes
+- Cómo se cerró la reunión
+
+**ESTRUCTURA DE LA CONCLUSIÓN:**
+1. Comienza con "En conclusión..." y haz un resumen de los principales acuerdos y temas tratados
+2. Termina con la frase estándar de cierre incluyendo la hora de finalización
+
+**DETECCIÓN DE HORAS EN LOS APUNTES:**
+Busca estos patrones en los apuntes originales:
+- Rangos: "2:00 PM - 3:45 PM", "de 2pm a 3:45pm", "2:00-3:45"
+- Hora de inicio: "inició a las 2:00", "comenzó a las 2pm", "empezó a las 14:00"
+- Hora de finalización: "terminó a las 3:45", "finalizó a las 3:45pm", "concluyó a las 15:45"
+- Duración: "duró 1 hora 45 minutos", "se extendió hasta las 3:45"
+- Conversión: Si encuentras formato 24h (14:00), conviértelo a formato 12h (2:00 PM) para el acta. Mantén formato 12h si ya está así.
+
+**FORMATO DE LA CONCLUSIÓN:**
+Después de la sección "ACUERDOS Y TAREAS", continúa directamente con la conclusión sin subtítulo.
+
+**EJEMPLOS DE CONCLUSIÓN:**
+- Con rango de horas en los apuntes (ej: "2:00 PM - 3:45 PM"):
+  "En conclusión, se han tratado los temas del presupuesto, elección de comisiones y renovación de contratos. Se han establecido acuerdos claros para cada punto y se han asignado responsabilidades específicas. No habiendo más asuntos que tratar, se levanta la sesión a las 3:45 PM."
+
+- Con hora específica de finalización (ej: "terminó a las 3:45 PM"):
+  "En conclusión, se han revisado y aprobado todos los puntos del orden del día, estableciendo acuerdos importantes para el funcionamiento de la asociación. No habiendo más asuntos que tratar, se levanta la sesión a las 3:45 PM."
+
+- Sin hora específica:
+  "En conclusión, se han abordado todos los temas pendientes y se han tomado decisiones importantes para el futuro de la asociación. No habiendo más asuntos que tratar, se levanta la sesión."
+
+- Con próxima reunión y hora:
+  "En conclusión, se han abordado todos los temas pendientes y se han tomado decisiones importantes para el futuro de la asociación. Se acuerda que la próxima reunión será el 15 del próximo mes. No habiendo más asuntos que tratar, se levanta la sesión a las 6:00 PM."
+
+**OBLIGATORIO:** Incluye siempre una conclusión, NO dejes el acta sin cerrar.
 `;
 
     // Llamada a Gemini para la redacción final
