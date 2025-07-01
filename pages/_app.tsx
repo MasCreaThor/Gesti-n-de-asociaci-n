@@ -2,6 +2,7 @@ import type { AppProps } from 'next/app'
 import { ChakraProvider, extendTheme } from '@chakra-ui/react'
 import { AuthProvider } from '../context/AuthContext'
 import { ThemeProvider } from '../context/ThemeContext'
+import '../styles/tiptap.css'
 
 // Configuración del tema con modo oscuro
 const theme = extendTheme({

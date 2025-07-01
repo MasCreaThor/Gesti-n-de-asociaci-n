@@ -1,0 +1,206 @@
+/* Estilos para el editor TipTap */
+.ProseMirror {
+  outline: none;
+  min-height: 300px;
+  padding: 1rem;
+  font-size: 0.875rem;
+  line-height: 1.6;
+}
+
+.ProseMirror p {
+  margin-bottom: 0.75rem;
+}
+
+.ProseMirror h1,
+.ProseMirror h2,
+.ProseMirror h3,
+.ProseMirror h4,
+.ProseMirror h5,
+.ProseMirror h6 {
+  margin-top: 1.5rem;
+  margin-bottom: 0.75rem;
+  font-weight: 600;
+}
+
+.ProseMirror h1 {
+  font-size: 1.5rem;
+  text-align: center;
+  font-weight: bold;
+}
+
+.ProseMirror h2 {
+  font-size: 1.25rem;
+  text-align: center;
+  font-weight: bold;
+}
+
+.ProseMirror h3 {
+  font-size: 1.125rem;
+  font-weight: 600;
+}
+
+.ProseMirror ul,
+.ProseMirror ol {
+  margin-left: 1.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.ProseMirror li {
+  margin-bottom: 0.25rem;
+}
+
+.ProseMirror blockquote {
+  border-left: 3px solid #e2e8f0;
+  padding-left: 1rem;
+  margin-left: 0;
+  margin-right: 0;
+  font-style: italic;
+}
+
+.ProseMirror code {
+  background-color: #f7fafc;
+  padding: 0.125rem 0.25rem;
+  border-radius: 0.25rem;
+  font-size: 0.875em;
+}
+
+.ProseMirror pre {
+  background-color: #f7fafc;
+  padding: 1rem;
+  border-radius: 0.5rem;
+  overflow-x: auto;
+}
+
+.ProseMirror pre code {
+  background-color: transparent;
+  padding: 0;
+}
+
+/* Estilos para modo oscuro */
+[data-theme="dark"] .ProseMirror {
+  color: #e2e8f0;
+}
+
+[data-theme="dark"] .ProseMirror code {
+  background-color: #2d3748;
+}
+
+[data-theme="dark"] .ProseMirror pre {
+  background-color: #2d3748;
+}
+
+[data-theme="dark"] .ProseMirror blockquote {
+  border-left-color: #4a5568;
+}
+
+/* Estilos para el placeholder */
+.ProseMirror p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  color: #adb5bd;
+  pointer-events: none;
+  height: 0;
+}
+
+/* Estilos para elementos activos */
+.ProseMirror .is-active {
+  background-color: #e2e8f0;
+}
+
+[data-theme="dark"] .ProseMirror .is-active {
+  background-color: #4a5568;
+}
+
+/* Estilos para el cursor */
+.ProseMirror .is-cursor {
+  background-color: #3182ce;
+  color: white;
+}
+
+/* Estilos para texto seleccionado */
+.ProseMirror ::selection {
+  background-color: #3182ce;
+  color: white;
+}
+
+/* Estilos para listas */
+.ProseMirror ul {
+  list-style-type: disc;
+}
+
+.ProseMirror ol {
+  list-style-type: decimal;
+}
+
+/* Estilos para enlaces */
+.ProseMirror a {
+  color: #3182ce;
+  text-decoration: underline;
+}
+
+.ProseMirror a:hover {
+  color: #2c5282;
+}
+
+/* Estilos para texto con sangría */
+.ProseMirror p[style*="text-align: center"] {
+  text-align: center !important;
+}
+
+.ProseMirror p[style*="text-align: right"] {
+  text-align: right !important;
+}
+
+.ProseMirror p[style*="text-align: left"] {
+  text-align: left !important;
+}
+
+/* Estilos para encabezados con alineación */
+.ProseMirror h1[style*="text-align: center"],
+.ProseMirror h2[style*="text-align: center"],
+.ProseMirror h3[style*="text-align: center"] {
+  text-align: center !important;
+}
+
+.ProseMirror h1[style*="text-align: right"],
+.ProseMirror h2[style*="text-align: right"],
+.ProseMirror h3[style*="text-align: right"] {
+  text-align: right !important;
+}
+
+.ProseMirror h1[style*="text-align: left"],
+.ProseMirror h2[style*="text-align: left"],
+.ProseMirror h3[style*="text-align: left"] {
+  text-align: left !important;
+}
+
+/* Preservar alineación en modo oscuro */
+[data-theme="dark"] .ProseMirror p[style*="text-align: center"] {
+  text-align: center !important;
+}
+
+[data-theme="dark"] .ProseMirror p[style*="text-align: right"] {
+  text-align: right !important;
+}
+
+[data-theme="dark"] .ProseMirror p[style*="text-align: left"] {
+  text-align: left !important;
+}
+
+[data-theme="dark"] .ProseMirror h1[style*="text-align: center"],
+[data-theme="dark"] .ProseMirror h2[style*="text-align: center"],
+[data-theme="dark"] .ProseMirror h3[style*="text-align: center"] {
+  text-align: center !important;
+}
+
+[data-theme="dark"] .ProseMirror h1[style*="text-align: right"],
+[data-theme="dark"] .ProseMirror h2[style*="text-align: right"],
+[data-theme="dark"] .ProseMirror h3[style*="text-align: right"] {
+  text-align: right !important;
+}
+
+[data-theme="dark"] .ProseMirror h1[style*="text-align: left"],
+[data-theme="dark"] .ProseMirror h2[style*="text-align: left"],
+[data-theme="dark"] .ProseMirror h3[style*="text-align: left"] {
+  text-align: left !important;
+} 
