@@ -90,6 +90,242 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return 'No se especificó el orden del día'
     }
 
+    // Si existe actaGenerada, usar formato profesional y parser mejorado
+    let contenidoActa = acta.actaGenerada
+    let estructura = acta.estructura // Suponiendo que guardas el JSON estructurado aquí
+    if (contenidoActa) {
+      // 1. Secciones previas (centrado, negrita, dinámico)
+      const encabezados = [
+        new Paragraph({
+          children: [new TextRun({ text: configuracion.nombreAsociacion.toUpperCase(), bold: true, size: 28 })],
+          alignment: AlignmentType.CENTER,
+          spacing: { before: 200, after: 400 },
+        }),
+        new Paragraph({
+          children: [new TextRun({ text: `ACTA DE LA ${getTipoReunionLegible(acta.tipoReunion).toUpperCase()}`, bold: true, size: 24 })],
+          alignment: AlignmentType.CENTER,
+          spacing: { before: 200, after: 400 },
+        }),
+        new Paragraph({
+          children: [new TextRun({
+            text: `En el ${acta.lugar}, la ${configuracion.nombreCompletoAsociacion} ubicado en el ${configuracion.ubicacionEspecifica}, y siendo las ${acta.hora} horas del ${new Date(acta.fecha).getDate()} de ${getNombreMes(new Date(acta.fecha))} de ${new Date(acta.fecha).getFullYear()}, debidamente convocados, los socios se reúnen en ${getTipoReunionLegible(acta.tipoReunion)}, respetando el quórum legalmente exigido.`,
+            size: 24,
+          })],
+          spacing: { before: 200, after: 300 },
+        }),
+        new Paragraph({
+          children: [new TextRun({ text: 'COMPOSICIÓN DE LA MESA', bold: true, size: 24 })],
+          alignment: AlignmentType.CENTER,
+          spacing: { before: 300, after: 200 },
+        }),
+        new Paragraph({
+          children: [new TextRun({
+            text: `Conforme a las disposiciones legales y estatutarias, actúa como presidente de la Asamblea ${configuracion.presidente.nombre}, presidente de la Asociación, y como secretario ${configuracion.secretario.nombre}.`,
+            size: 24,
+          })],
+          spacing: { before: 100, after: 300 },
+        }),
+        new Paragraph({
+          children: [new TextRun({ text: 'ASISTENCIA', bold: true, size: 24 })],
+          alignment: AlignmentType.CENTER,
+          spacing: { before: 200, after: 200 },
+        }),
+        new Paragraph({
+          children: [new TextRun({
+            text: `Asisten a la reunión un total de ${(acta.asistentes && acta.asistentes.length) || 0} socios.`,
+            size: 24,
+          })],
+          spacing: { before: 100, after: 200 },
+        }),
+        new Paragraph({
+          children: [new TextRun({ text: 'ORDEN DEL DÍA', bold: true, size: 24 })],
+          alignment: AlignmentType.CENTER,
+          spacing: { before: 200, after: 200 },
+        }),
+      ]
+      // 2. Insertar el 'ORDEN DEL DÍA' como lista numerada
+      let ordenDelDiaDocx: Paragraph[] = []
+      if (estructura && estructura.ordenDelDia) {
+        ordenDelDiaDocx = (estructura.ordenDelDia || []).map((item: string, idx: number) => {
+          // Limpiar cualquier numeración existente en el item
+          const itemLimpio = item.replace(/^\d+\.\s*/, '')
+          return new Paragraph({
+            text: itemLimpio,
+            numbering: { reference: 'numbered-list', level: 0 },
+            spacing: { after: 100 },
+          })
+        })
+      }
+      let deliberacionesDocx: Paragraph[] = []
+      // 3. Insertar 'DELIBERACIONES Y ACUERDOS' con parser mejorado
+      
+      // NUEVO PARSER ROBUSTO PARA actaGenerada
+      const parseActaGeneradaToDocx = (texto: string) => {
+        // Eliminar etiquetas HTML y convertirlas a formato Word
+        texto = texto.replace(/<p[^>]*>/gi, '\n').replace(/<\/p>/gi, '\n')
+        texto = texto.replace(/<br\s*\/?>/gi, '\n')
+        texto = texto.replace(/&nbsp;/g, ' ')
+        // Convertir encabezados centrados
+        texto = texto.replace(/<p[^>]*align="center"[^>]*><strong>(.*?)<\/strong><\/p>/gi, '##$1##')
+        texto = texto.replace(/<strong>(.*?)<\/strong>/gi, '**$1**')
+        // Quitar cualquier otra etiqueta HTML
+        texto = texto.replace(/<[^>]+>/g, '')
+        // Normalizar saltos de línea
+        texto = texto.replace(/\n{2,}/g, '\n')
+        // Separar por líneas
+        const lineas = texto.split(/\n/).map(l => l.trim()).filter(Boolean)
+        const parrafos: Paragraph[] = []
+        let enSeccionAcuerdos = false
+        let contadorLetras = 0
+        lineas.forEach(linea => {
+          // Detectar si estamos en la sección de ACUERDOS Y TAREAS
+          if (/acuerdos.*tareas/i.test(linea)) {
+            enSeccionAcuerdos = true
+            contadorLetras = 0
+          }
+          
+          // Encabezados centrados
+          if (/^##.*##$/.test(linea)) {
+            parrafos.push(new Paragraph({
+              children: [new TextRun({ text: linea.replace(/##/g, ''), bold: true, size: 24 })],
+              alignment: AlignmentType.CENTER,
+              spacing: { before: 200, after: 200 },
+            }))
+          } else if (/^\d+\.\s*/.test(linea)) {
+            // Lista numerada - ELIMINAR el número existente para evitar duplicación
+            const textoLimpio = linea.replace(/^\d+\.\s*/, '')
+            if (enSeccionAcuerdos) {
+              // En ACUERDOS Y TAREAS, usar guiones en lugar de numeración
+              parrafos.push(new Paragraph({
+                text: textoLimpio,
+                bullet: { level: 0 },
+                spacing: { after: 100 },
+              }))
+            } else {
+              // En otras secciones, usar numeración normal
+              parrafos.push(new Paragraph({
+                text: textoLimpio,
+                numbering: { reference: 'numbered-list', level: 0 },
+                spacing: { after: 100 },
+              }))
+            }
+          } else if (/^\* |- /.test(linea)) {
+            // Lista con viñetas - ELIMINAR el símbolo existente
+            const textoLimpio = linea.replace(/^\* |- /, '')
+            parrafos.push(new Paragraph({
+              text: textoLimpio,
+              bullet: { level: 0 },
+              spacing: { after: 100 },
+            }))
+          } else if (/^\*\*(.*?)\*\*$/.test(linea)) {
+            // Negrita
+            parrafos.push(new Paragraph({
+              children: [new TextRun({ text: linea.replace(/\*\*/g, ''), bold: true })],
+              spacing: { after: 200 },
+            }))
+          } else {
+            // Párrafo normal, procesar negritas internas
+            const runs: TextRun[] = []
+            let lastIndex = 0
+            const boldRegex = /\*\*(.*?)\*\*/g
+            let match
+            while ((match = boldRegex.exec(linea)) !== null) {
+              if (match.index > lastIndex) {
+                runs.push(new TextRun({ text: linea.substring(lastIndex, match.index) }))
+              }
+              runs.push(new TextRun({ text: match[1], bold: true }))
+              lastIndex = match.index + match[0].length
+            }
+            if (lastIndex < linea.length) {
+              runs.push(new TextRun({ text: linea.substring(lastIndex) }))
+            }
+            parrafos.push(new Paragraph({ children: runs.length ? runs : [new TextRun(linea)], spacing: { after: 200 } }))
+          }
+        })
+        return parrafos
+      }
+      // Buscar el inicio de 'ORDEN DEL DÍA' y 'DELIBERACIONES Y ACUERDOS' en el acta generada
+      let partes = contenidoActa.split(/\n{2,}/g)
+      let idxOrden = partes.findIndex(p => /orden del d[ií]a/i.test(p))
+      let idxDeliberaciones = partes.findIndex(p => /deliberaciones.*acuerdos/i.test(p))
+      if (idxOrden !== -1 && idxDeliberaciones !== -1) {
+        // Orden del día: desde idxOrden+1 hasta idxDeliberaciones-1
+        const orden = partes.slice(idxOrden + 1, idxDeliberaciones).join('\n')
+        ordenDelDiaDocx = parseActaGeneradaToDocx(orden)
+        // Deliberaciones: desde idxDeliberaciones+1 hasta el final
+        const deliberaciones = partes.slice(idxDeliberaciones + 1).join('\n')
+        deliberacionesDocx = parseActaGeneradaToDocx(deliberaciones)
+      } else {
+        // Si no se encuentran, parsear todo el contenido
+        ordenDelDiaDocx = []
+        deliberacionesDocx = parseActaGeneradaToDocx(contenidoActa)
+      }
+      const doc = new Document({
+        numbering: {
+          config: [
+            {
+              reference: 'numbered-list',
+              levels: [
+                {
+                  level: 0,
+                  format: 'decimal',
+                  text: '%1.',
+                  alignment: AlignmentType.LEFT,
+                },
+              ],
+            },
+          ],
+        },
+        sections: [
+          {
+            properties: {
+              page: { margin: { top: 1440, right: 1440, bottom: 1440, left: 1440 } },
+            },
+            children: [
+              ...encabezados,
+              ...ordenDelDiaDocx,
+              new Paragraph({
+                children: [new TextRun({ text: 'DELIBERACIONES Y ACUERDOS', bold: true, size: 24 })],
+                alignment: AlignmentType.CENTER,
+                spacing: { before: 200, after: 200 },
+              }),
+              ...deliberacionesDocx,
+              new Table({
+                width: { size: 100, type: WidthType.PERCENTAGE },
+                rows: [
+                  new TableRow({
+                    children: [
+                      new TableCell({
+                        children: [
+                          new Paragraph({ children: [new TextRun({ text: configuracion.presidente.nombre, bold: true })] }),
+                          new Paragraph({ children: [new TextRun({ text: 'PRESIDENTE', bold: true })] }),
+                        ],
+                        width: { size: 50, type: WidthType.PERCENTAGE },
+                        verticalAlign: VerticalAlign.CENTER,
+                      }),
+                      new TableCell({
+                        children: [
+                          new Paragraph({ children: [new TextRun({ text: configuracion.secretario.nombre, bold: true })] }),
+                          new Paragraph({ children: [new TextRun({ text: 'SECRETARIO', bold: true })] }),
+                        ],
+                        width: { size: 50, type: WidthType.PERCENTAGE },
+                        verticalAlign: VerticalAlign.CENTER,
+                      }),
+                    ],
+                  }),
+                ],
+              }),
+            ],
+          },
+        ],
+      })
+      const buffer = await Packer.toBuffer(doc)
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document')
+      res.setHeader('Content-Disposition', `attachment; filename="acta-${acta.titulo.replace(/[^a-z0-9]/gi, '-').toLowerCase()}-${new Date(acta.fecha).toISOString().split('T')[0]}.docx"`)
+      return res.send(buffer)
+    }
+
+    // Si no existe actaGenerada, usar el formato antiguo con apuntes
     // Crear el documento Word con el nuevo formato
     const doc = new Document({
       sections: [

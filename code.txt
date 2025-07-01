@@ -1,0 +1,190 @@
+
+El problema no son tus datos, sino el **enfoque de "un solo paso"**. Es demasiado complejo y poco fiable.
+
+La solución profesional y robusta es cambiar a un **Enfoque de Dos Pasos: 1. Análisis y Estructuración, 2. Redacción Final.**
+
+Vamos a redefinir por completo el proceso. Olvida el prompt anterior. Este nuevo método es mucho más potente y te dará los resultados consistentes y bien estructurados que necesitas.
+
+---
+
+### **El Nuevo Flujo de Trabajo: Análisis → Redacción**
+
+1.  **Primera Llamada a la IA (El Analista):** Le daremos la transcripción en bruto y le pediremos que su **única salida sea un objeto JSON estructurado**. No le pedimos que escriba el acta, solo que piense, analice y organice la información. Esto fuerza a la IA a hacer el trabajo pesado de estructuración.
+2.  **Procesamiento en tu Código:** Tu código recibirá este JSON limpio.
+3.  **Segunda Llamada a la IA (El Redactor):** Le daremos el JSON ya estructurado y una plantilla simple, pidiéndole que redacte el acta final. Esta tarea es mucho más fácil y la IA se centrará en el lenguaje y el formato, ya que la estructura ya está resuelta.
+
+---
+
+### **Paso 1: La Primera Llamada (El Analista de Contenido)**
+
+Tu primer `prompt` debe ser este. Su objetivo es generar un JSON.
+
+```javascript
+// Este es el prompt que construirás en tu código para la PRIMERA llamada
+const promptAnalisis = `
+Eres un analista de actas experto y un asistente de estructuración de datos. Tu tarea es leer la siguiente transcripción de una reunión e información contextual, y convertirla en un objeto JSON bien formado.
+
+**INSTRUCCIONES CRÍTICAS:**
+1.  **Salida Exclusivamente en JSON:** Tu respuesta DEBE ser únicamente el objeto JSON. No incluyas texto introductorio, explicaciones, ni las marcas de código \`\`\`json. Solo el JSON puro.
+2.  **Mapeo de Participantes:** Analiza la transcripción para identificar los nombres reales de los "Oradores". Usa el contexto (presentaciones, menciones como "doctor Manuel", "Darlene", "Denly") para asociar "Orador 1", "Orador 2", etc., con sus nombres. Si un nombre no puede ser identificado, usa su etiqueta genérica (ej: "Orador 3").
+3.  **Deducción del Orden del Día:** Identifica los grandes temas de la discusión y formúlalos como puntos claros para el orden del día.
+4.  **Resumen de Deliberaciones:** Para cada punto del orden del día, crea un resumen detallado de la discusión. Atribuye cada intervención al nombre correcto del participante que identificaste. Si dentro de un resumen hay una lista de requisitos o puntos, usa el formato markdown con guiones (-) para crear una sublista.
+5.  **Extracción de Acuerdos y Tareas:** Identifica y lista claramente cualquier decisión, acuerdo o tarea pendiente que surja.
+
+**INFORMACIÓN DE CONTEXTO:**
+- Presidente de la Asociación: ${configuracion.presidente.nombre}
+- Secretario de la Asociación: ${configuracion.secretario.nombre}
+- Posibles nombres mencionados: Manuel, Darlene, Denly, Berlín, Yulisa, Nelazio, Duderney, Sandra Lagos.
+
+**TRANSCRIPCIÓN A ANALIZAR:**
+${acta.apuntes}
+
+**ESTRUCTURA JSON DE SALIDA REQUERIDA:**
+{
+  "participantes": [
+    { "etiqueta": "Orador 1", "nombreIdentificado": "Nombre Real o 'Orador 1 si no se identifica'" },
+    { "etiqueta": "Orador 2", "nombreIdentificado": "Nombre Real o 'Orador 2 si no se identifica'" }
+  ],
+  "ordenDelDia": [
+    "Análisis del Acuerdo Municipal 006 de 2018 y composición del Consejo de Paz.",
+    "Procedimiento para la elección y convocatoria de miembros de la sociedad civil.",
+    "Discusión sobre garantías y financiación para la participación en el Consejo de Paz.",
+    "Propuesta de modificación del acuerdo y próximos pasos."
+  ],
+  "deliberaciones": [
+    {
+      "punto": "1. Análisis del Acuerdo Municipal 006 de 2018 y composición del Consejo de Paz.",
+      "resumen": "La sesión inicia con la [Nombre de Orador 1] presentando el Acuerdo. A petición de [Nombre de Orador 2], se proyecta el documento. Se discute la composición, incluyendo miembros permanentes y la imposibilidad de delegar la participación, lo cual [Nombre de Orador 2] sugiere modificar. Se detalla la estructura por sectores (ejecutivo, órganos de control, sociedad civil) y la necesidad de nombrar a dos concejales."
+    },
+    {
+      "punto": "2. Procedimiento para la elección y convocatoria de miembros de la sociedad civil.",
+      "resumen": "Se aborda la principal dificultad: la falta de un listado actualizado de representantes de la sociedad civil, lo que impide convocar. [Nombre de Orador 2] confirma esta dificultad. Se concluye que es necesario un acto administrativo (resolución) para reglamentar el proceso de elección, definiendo: \n- Requisitos para los sectores.\n- Procedimiento de elección.\n- Mecanismos de convocatoria."
+    }
+  ],
+  "acuerdosYTareas": [
+    "Se acuerda que el primer paso para reactivar el Consejo es realizar la elección de los representantes de la sociedad civil.",
+    "Se establece como tarea prioritaria la creación de un borrador de resolución que reglamente el proceso de elección, en lugar de esperar a una modificación completa del acuerdo municipal.",
+    "[Nombre de Orador 2] y [Nombre de Orador 1] colaborarán en el desarrollo del borrador del acto administrativo.",
+    "Se procederá con la convocatoria para la elección una vez se expida la resolución, y en paralelo, se trabajará en la propuesta de modificación del Acuerdo Municipal para presentarla al concejo."
+  ]
+}
+`;
+```
+
+### **Paso 2: Lógica en tu Código (Node.js)**
+
+Después de la primera llamada, tu código hará lo siguiente:
+
+```javascript
+//...
+// 1. Realizar la primera llamada a la IA con el `promptAnalisis`
+const respuestaAnalisis = await fetch(GEMINI_API_URL, { /* ... */ });
+const dataAnalisis = await respuestaAnalisis.json();
+const contenidoJsonTexto = dataAnalisis.candidates[0].content.parts[0].text;
+
+// 2. Parsear el JSON recibido
+let datosEstructurados;
+try {
+  datosEstructurados = JSON.parse(contenidoJsonTexto);
+} catch (e) {
+  // Manejar error si la IA no devolvió un JSON válido
+  return res.status(500).json({ error: 'La IA no devolvió un JSON estructurado válido.' });
+}
+
+// 3. Construir dinámicamente las secciones para el segundo prompt
+const ordenDelDiaFormateado = datosEstructurados.ordenDelDia
+    .map((item, index) => `${index + 1}. ${item}`)
+    .join('\n');
+
+const deliberacionesFormateadas = datosEstructurados.deliberaciones
+    .map(d => `**${d.punto}**\n&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;${d.resumen.replace(/\n/g, '\n&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;')}`)
+    .join('\n\n');
+
+// Ahora, pasamos al Paso 3...
+```
+
+### **Paso 3: La Segunda Llamada (El Redactor Final)**
+
+Con los datos ya limpios y estructurados, la segunda llamada usa un `prompt` mucho más simple. Es casi una simple tarea de "rellenar los huecos".
+
+```javascript
+// Este es el prompt que construirás para la SEGUNDA llamada
+const promptRedaccion = `
+Eres un secretario experto encargado de redactar un acta formal y profesional usando la información estructurada que se te proporciona. Sigue el formato EXACTAMENTE como se indica, con las sangrías y negritas correspondientes.
+
+**INFORMACIÓN DE LA ASOCIACIÓN Y REUNIÓN:**
+- Nombre de la Asociación: ${configuracion.nombreCompletoAsociacion}
+- Tipo de Reunión: ${getTipoReunionLegible(acta.tipoReunion)}
+- Lugar: ${acta.lugar}
+- Fecha: ${new Date(acta.fecha).getDate()} de ${getNombreMes(new Date(acta.fecha))} de ${new Date(acta.fecha).getFullYear()}
+- Hora: ${acta.hora}
+- Presidente: ${configuracion.presidente.nombre}
+- Secretario: ${configuracion.secretario.nombre}
+- Número de Asistentes: ${acta.asistentes.length}
+
+**CONTENIDO ESTRUCTURADO DEL ACTA:**
+
+**ORDEN DEL DÍA:**
+${ordenDelDiaFormateado}
+
+**DELIBERACIONES Y ACUERDOS:**
+${deliberacionesFormateadas}
+
+**REDacta EL ACTA FINAL SIGUIENDO ESTE FORMATO OBLIGATORIO:**
+
+<p align="center"><strong>${configuracion.nombreAsociacion.toUpperCase()}</strong></p>
+<p align="center"><strong>ACTA DE LA ${getTipoReunionLegible(acta.tipoReunion).toUpperCase()}</strong></p>
+<br>
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;En [Lugar], la **[Nombre de la Asociación]**, y siendo las [Hora] horas del [Fecha completa], debidamente convocados, los socios se reúnen en [Tipo de Reunión], respetando el quórum legalmente exigido.
+
+<br>
+<p align="center"><strong>COMPOSICIÓN DE LA MESA</strong></p>
+<br>
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Actúa como presidente de la Asamblea **[Presidente]** y como secretario **[Secretario]**.
+
+<br>
+<p align="center"><strong>ASISTENCIA</strong></p>
+<br>
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Asisten a la reunión un total de [Número de Asistentes] socios.
+
+<br>
+<p align="center"><strong>ORDEN DEL DÍA</strong></p>
+<br>
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Se presenta y aprueba el siguiente orden del día:
+${ordenDelDiaFormateado.replace(/\n/g, '<br>')}
+
+<br>
+<p align="center"><strong>DELIBERACIONES Y ACUERDOS</strong></p>
+<br>
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Tras la lectura del Orden del Día, se procede a su tratamiento, dando lugar a las siguientes deliberaciones y acuerdos:
+
+${deliberacionesFormateadas.replace(/\n/g, '<br>')}
+
+<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;No habiendo más asuntos que tratar, se levanta la sesión.
+
+<br><br><br>
+| | |
+|:---:|:---:|
+| _____________________________________ | _____________________________________ |
+| **${configuracion.presidente.nombre}** | **${configuracion.secretario.nombre}** |
+| **PRESIDENTE** | **SECRETARIO** |
+`;
+
+// 4. Realizar la segunda llamada con el `promptRedaccion` y devolver el resultado final.
+// ...
+```
+
+### **Ventajas de este Nuevo Enfoque:**
+
+1.  **Fiabilidad y Consistencia:** Al separar las tareas, cada llamada a la IA tiene un objetivo claro y simple. La primera se enfoca 100% en el análisis, la segunda 100% en la redacción. Esto elimina la confusión y produce resultados consistentes.
+2.  **Estructura Garantizada:** El formato JSON del primer paso **fuerza** a la IA a crear la estructura de ítems (`1.`, `2.`) que necesitas. Luego, tu código se encarga de formatearla correctamente.
+3.  **Calidad del Análisis:** La IA puede dedicar más "esfuerzo computacional" a entender la transcripción, identificar los nombres y resumir los puntos clave porque no está preocupada por el formato final.
+4.  **Control y Depuración:** Si algo falla, sabes exactamente en qué paso ocurrió. Si el JSON es malo, el problema está en el "Analista". Si el formato del acta es incorrecto, el problema está en el "Redactor".
+
+Este cambio de metodología es la clave para pasar de un prototipo inconsistente a una herramienta de producción robusta y profesional.

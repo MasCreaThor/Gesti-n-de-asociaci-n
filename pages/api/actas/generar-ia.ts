@@ -14,9 +14,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   try {
     await dbConnect()
-    
     const { actaId } = req.body
-    
     if (!actaId) {
       return res.status(400).json({ error: 'ID de acta requerido' })
     }
@@ -25,7 +23,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const acta = await (Acta as any).findById(actaId)
       .populate('reunionId', 'titulo fecha tipoReunion lugar hora asistentes descripcion')
       .exec()
-    
     if (!acta) {
       return res.status(404).json({ error: 'Acta no encontrada' })
     }
@@ -36,7 +33,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(500).json({ error: 'Configuración del sistema no encontrada' })
     }
 
-    // Función para convertir tipos de reunión
+    // Utilidades para el prompt
     const getTipoReunionLegible = (tipo: string) => {
       const tipos = {
         'asamblea': 'Asamblea General',
@@ -45,8 +42,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
       return tipos[tipo as keyof typeof tipos] || tipo
     }
-
-    // Función para obtener el nombre del mes
     const getNombreMes = (fecha: Date) => {
       const meses = [
         'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
@@ -55,152 +50,243 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return meses[fecha.getMonth()]
     }
 
-    // Extraer puntos del orden del día de los apuntes
-    const extraerOrdenDelDia = (apuntes: string) => {
-      if (!apuntes) return 'No se especificó el orden del día'
-      
-      // Buscar números seguidos de puntos en los apuntes
-      const puntos = apuntes.match(/\d+\.\s*[^.\n]+/g)
-      if (puntos && puntos.length > 0) {
-        return puntos.join('\n')
-      }
-      
-      // Si no hay números, buscar líneas que parezcan puntos del orden del día
-      const lineas = apuntes.split('\n').filter(linea => 
-        linea.trim().length > 0 && 
-        !linea.trim().startsWith('•') && 
-        !linea.trim().startsWith('-')
-      )
-      
-      if (lineas.length > 0) {
-        return lineas.slice(0, 5).join('\n') // Máximo 5 puntos
-      }
-      
-      return 'No se especificó el orden del día'
+    // ----------- PASO 1: ANÁLISIS Y ESTRUCTURACIÓN (JSON) -----------
+    const promptAnalisis = `
+Eres un analista de actas experto y un asistente de estructuración de datos. Tu tarea es leer la siguiente transcripción de una reunión e información contextual, y convertirla en un objeto JSON bien formado.
+
+**INSTRUCCIONES CRÍTICAS:**
+1.  **Salida Exclusivamente en JSON:** Tu respuesta DEBE ser únicamente el objeto JSON. No incluyas texto introductorio, explicaciones, ni las marcas de código \`\`\`json. Solo el JSON puro.
+2.  **Mapeo de Participantes:** Analiza la transcripción para identificar los nombres reales de los "Oradores". Usa el contexto (presentaciones, menciones como "doctor Manuel", "Darlene", "Denly") para asociar "Orador 1", "Orador 2", etc., con sus nombres. Si un nombre no puede ser identificado, usa su etiqueta genérica (ej: "Orador 3").
+3.  **Deducción del Orden del Día:** Identifica y deduce TODOS los grandes temas de la discusión y formúlalos como puntos claros para el orden del día. No limites el número de ítems, incluye todos los temas relevantes tratados.
+4.  **Resumen de Deliberaciones:** Para cada punto del orden del día, crea un resumen detallado de la discusión. Atribuye cada intervención al nombre correcto del participante que identificaste. Si dentro de un resumen hay una lista de requisitos o puntos, usa el formato markdown con guiones (-) para crear una sublista.
+5.  **Extracción de Acuerdos y Tareas:** Identifica y lista claramente cualquier decisión, acuerdo o tarea pendiente que surja.
+
+**EJEMPLO DE TRANSCRIPCIÓN Y SALIDA ESPERADA:**
+TRANSCRIPCIÓN:
+"""
+Orador 1: Buenas tardes, soy Manuel, presidente de la asociación. Hoy revisaremos el Acuerdo 006 y la elección de representantes.
+Orador 2: Gracias Manuel. ¿Podemos ver el documento?
+Orador 1: Claro, aquí está. El acuerdo establece la creación del Consejo Municipal de Paz.
+Orador 3: ¿Quiénes pueden ser elegidos?
+Orador 1: Cualquier miembro de la sociedad civil que cumpla los requisitos.
+Orador 2: Sugiero que se publique la convocatoria en la web.
+Orador 1: De acuerdo, lo haremos así.
+"""
+SALIDA JSON ESPERADA:
+{
+  "participantes": [
+    { "etiqueta": "Orador 1", "nombreIdentificado": "Manuel" },
+    { "etiqueta": "Orador 2", "nombreIdentificado": "No identificado" },
+    { "etiqueta": "Orador 3", "nombreIdentificado": "No identificado" }
+  ],
+  "ordenDelDia": [
+    "Revisión del Acuerdo 006",
+    "Elección de representantes de la sociedad civil",
+    "Publicación de la convocatoria"
+  ],
+  "deliberaciones": [
+    {
+      "punto": "1. Revisión del Acuerdo 006",
+      "resumen": "Manuel presenta el Acuerdo 006 y explica la creación del Consejo Municipal de Paz."
+    },
+    {
+      "punto": "2. Elección de representantes de la sociedad civil",
+      "resumen": "Orador 3 pregunta sobre los requisitos. Manuel responde que cualquier miembro que cumpla los requisitos puede ser elegido."
+    },
+    {
+      "punto": "3. Publicación de la convocatoria",
+      "resumen": "Orador 2 sugiere publicar la convocatoria en la web. Manuel acepta la sugerencia."
     }
+  ],
+  "acuerdosYTareas": [
+    "Publicar la convocatoria en la web.",
+    "Realizar la elección de representantes."
+  ]
+}
 
-    // Preparar el prompt para la IA con el nuevo modelo
-    const prompt = `Eres un secretario experto en redactar actas de reuniones formales siguiendo un modelo específico.
+**INFORMACIÓN DE CONTEXTO:**
+- Presidente de la Asociación: ${configuracion.presidente.nombre}
+- Secretario de la Asociación: ${configuracion.secretario.nombre}
+- Posibles nombres mencionados: Manuel, Darlene, Denly, Berlín, Yulisa, Nelazio, Duderney, Sandra Lagos.
 
-    Basándote en la siguiente información de la reunión, los apuntes tomados y la configuración de la asociación, genera un acta profesional siguiendo EXACTAMENTE este formato:
+**TRANSCRIPCIÓN A ANALIZAR:**
+${acta.apuntes}
 
-    INFORMACIÓN DE LA ASOCIACIÓN:
-    - Nombre: ${configuracion.nombreAsociacion}
-    - Nombre Completo: ${configuracion.nombreCompletoAsociacion}
-    - Dirección: ${configuracion.direccionAsociacion}
-    - Ubicación: ${configuracion.ubicacionEspecifica}
-    - Presidente: ${configuracion.presidente.nombre}
-    - Secretario: ${configuracion.secretario.nombre}
+**ESTRUCTURA JSON DE SALIDA REQUERIDA:**
+{
+  "participantes": [
+    { "etiqueta": "Orador 1", "nombreIdentificado": "Nombre Real o 'Orador 1 si no se identifica'" }
+  ],
+  "ordenDelDia": [
+    "Tema 1...",
+    "Tema 2..."
+  ],
+  "deliberaciones": [
+    {
+      "punto": "1. Tema 1...",
+      "resumen": "Resumen detallado..."
+    }
+  ],
+  "acuerdosYTareas": [
+    "Acuerdo o tarea 1..."
+  ]
+}
+`;
 
-    INFORMACIÓN DE LA REUNIÓN:
-    - Título: ${acta.titulo}
-    - Fecha: ${new Date(acta.fecha).toLocaleDateString('es-CO')}
-    - Tipo de Reunión: ${getTipoReunionLegible(acta.tipoReunion)}
-    - Lugar: ${acta.lugar}
-    - Hora: ${acta.hora}
-    - Asistentes: ${acta.asistentes.join(', ')}
-    - Descripción: ${acta.reunionId?.descripcion || 'No especificada'}
-
-    APUNTES TOMADOS:
-    ${acta.apuntes || 'No se tomaron apuntes específicos'}
-
-    GENERA UN ACTA SIGUIENDO EXACTAMENTE ESTE FORMATO:
-
-    ${configuracion.nombreAsociacion}
-
-    ACTA DE LA ${getTipoReunionLegible(acta.tipoReunion).toUpperCase()}
-
-    En el ${acta.lugar}, la ${configuracion.nombreCompletoAsociacion} ubicado en el ${configuracion.ubicacionEspecifica}, y siendo las ${acta.hora} horas del ${new Date(acta.fecha).getDate()} de ${getNombreMes(new Date(acta.fecha))} de ${new Date(acta.fecha).getFullYear()}, debidamente convocados, los socios se reúnen en ${getTipoReunionLegible(acta.tipoReunion)}, respetando el quórum legalmente exigido, con la siguiente,
-
-    COMPOSICIÓN DE LA MESA
-
-    Conforme a las disposiciones legales y estatutarias, actúa como presidente de la Asamblea ${configuracion.presidente.nombre}, presidente de la Asociación, y como secretario a ${configuracion.secretario.nombre}.
-
-    La Asamblea General se reúne con los siguientes,
-
-    SOCIOS ASISTENTES
-
-    Asisten a la ${getTipoReunionLegible(acta.tipoReunion)} un total de ${acta.asistentes.length} socios; se anexa asistencia:
-    ${acta.asistentes.join(', ')}
-
-    De acuerdo con la convocatoria efectuada, la ${getTipoReunionLegible(acta.tipoReunion)} tiene como,
-
-    ORDEN DEL DÍA
-
-    ${extraerOrdenDelDia(acta.apuntes)}
-
-    Tras la lectura del Orden del Día, se procede a su tratamiento, dando lugar a la adopción por la Asamblea de las siguientes,
-
-    DELIBERACIONES Y ACUERDOS
-
-    ${acta.apuntes || 'No se tomaron apuntes específicos'}
-
-    No habiendo más asuntos que tratar, se levanta la sesión siendo las ${acta.hora} horas del ${new Date(acta.fecha).getDate()} de ${getNombreMes(new Date(acta.fecha))} de ${new Date(acta.fecha).getFullYear()}, citado, de todo lo cual doy fe como secretario y firmo la presente con el presidente.
-
-    ${configuracion.presidente.nombre}                    ${configuracion.secretario.nombre}
-    PRESIDENTE                                           SECRETARIO
-
-    INSTRUCCIONES ESPECÍFICAS:
-    - Mantén EXACTAMENTE la estructura y formato mostrado
-    - Usa la información de la configuración de la asociación
-    - Para el ORDEN DEL DÍA, extrae los puntos principales de los apuntes (números seguidos de puntos)
-    - En DELIBERACIONES Y ACUERDOS, incluye el desarrollo detallado de cada punto
-    - Organiza las deliberaciones de manera clara y cronológica
-    - Asegúrate de que todos los acuerdos y decisiones queden claramente documentados
-    - Si no hay información específica para alguna sección, indícalo apropiadamente
-    - Mantén el lenguaje formal y profesional
-    - Respeta la sangría y formato del modelo`
-    
-    // Llamar a la API de Gemini
-    const response = await fetch(`${GEMINI_API_URL}?key=${GEMINI_API_KEY}`, {
+    // Llamada a Gemini para el análisis
+    const responseAnalisis = await fetch(`${GEMINI_API_URL}?key=${GEMINI_API_KEY}`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         contents: [
-          {
-            parts: [
-              {
-                text: prompt
-              }
-            ]
-          }
+          { parts: [ { text: promptAnalisis } ] }
         ]
       })
     })
-    
-    if (!response.ok) {
-      const errorData = await response.text()
-      console.error('Error de Gemini API:', errorData)
-      return res.status(500).json({ error: 'Error al generar contenido con IA' })
+    if (!responseAnalisis.ok) {
+      const errorData = await responseAnalisis.text()
+      return res.status(500).json({ error: 'Error en análisis IA', detalle: errorData })
     }
-    
-    const data = await response.json()
-    
-    if (!data.candidates || !data.candidates[0] || !data.candidates[0].content) {
-      return res.status(500).json({ error: 'Respuesta inválida de la IA' })
+    const dataAnalisis = await responseAnalisis.json()
+    let contenidoJsonTexto = dataAnalisis.candidates?.[0]?.content?.parts?.[0]?.text
+
+    // Preprocesamiento para limpiar la respuesta de la IA
+    if (contenidoJsonTexto) {
+      // Eliminar marcas de código ```json o ```
+      contenidoJsonTexto = contenidoJsonTexto.replace(/```json|```/g, '').trim()
+      // Buscar el primer y último { }
+      const firstBrace = contenidoJsonTexto.indexOf('{')
+      const lastBrace = contenidoJsonTexto.lastIndexOf('}')
+      if (firstBrace !== -1 && lastBrace !== -1) {
+        contenidoJsonTexto = contenidoJsonTexto.substring(firstBrace, lastBrace + 1)
+      }
     }
-    
-    const actaGenerada = data.candidates[0].content.parts[0].text
-    
-    // Actualizar la acta con el contenido generado
+
+    let datosEstructurados
+    try {
+      datosEstructurados = JSON.parse(contenidoJsonTexto)
+    } catch (e) {
+      return res.status(500).json({ error: 'La IA no devolvió un JSON estructurado válido.', contenido: contenidoJsonTexto })
+    }
+
+    // Formatear listas para el segundo prompt
+    const ordenDelDiaFormateado = (datosEstructurados.ordenDelDia || [])
+      .map((item: string, idx: number) => `${idx + 1}. ${item}`)
+      .join('\n')
+    const deliberacionesFormateadas = (datosEstructurados.deliberaciones || [])
+      .map((d: any) => `**${d.punto}**\n&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;${d.resumen.replace(/\n/g, '\n&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;')}`)
+      .join('\n\n')
+    const acuerdosFormateados = (datosEstructurados.acuerdosYTareas || [])
+      .map((a: string, idx: number) => `${idx + 1}. ${a}`)
+      .join('\n')
+
+    // ----------- PASO 2: REDACCIÓN FINAL -----------
+    const promptRedaccion = `
+Eres un secretario experto encargado de redactar un acta formal y profesional usando la información estructurada que se te proporciona. Sigue el formato EXACTAMENTE como se indica, con las sangrías y negritas correspondientes.
+
+**INFORMACIÓN DE LA ASOCIACIÓN Y REUNIÓN:**
+- Nombre de la Asociación: ${configuracion.nombreCompletoAsociacion}
+    - Tipo de Reunión: ${getTipoReunionLegible(acta.tipoReunion)}
+    - Lugar: ${acta.lugar}
+- Fecha: ${new Date(acta.fecha).getDate()} de ${getNombreMes(new Date(acta.fecha))} de ${new Date(acta.fecha).getFullYear()}
+    - Hora: ${acta.hora}
+- Presidente: ${configuracion.presidente.nombre}
+- Secretario: ${configuracion.secretario.nombre}
+- Número de Asistentes: ${acta.asistentes.length}
+
+**CONTENIDO ESTRUCTURADO DEL ACTA:**
+
+**ORDEN DEL DÍA:**
+${ordenDelDiaFormateado}
+
+**DELIBERACIONES Y ACUERDOS:**
+${deliberacionesFormateadas}
+
+**ACUERDOS Y TAREAS:**
+${acuerdosFormateados}
+
+**REDacta EL ACTA FINAL SIGUIENDO ESTE FORMATO OBLIGATORIO:**
+
+<p align="center"><strong>${configuracion.nombreAsociacion.toUpperCase()}</strong></p>
+<p align="center"><strong>ACTA DE LA ${getTipoReunionLegible(acta.tipoReunion).toUpperCase()}</strong></p>
+<br>
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;En [Lugar], la **[Nombre de la Asociación]**, y siendo las [Hora] horas del [Fecha completa], debidamente convocados, los socios se reúnen en [Tipo de Reunión], respetando el quórum legalmente exigido.
+
+<br>
+<p align="center"><strong>COMPOSICIÓN DE LA MESA</strong></p>
+<br>
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Actúa como presidente de la Asamblea **[Presidente]** y como secretario **[Secretario]**.
+
+<br>
+<p align="center"><strong>ASISTENCIA</strong></p>
+<br>
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Asisten a la reunión un total de [Número de Asistentes] socios.
+
+<br>
+<p align="center"><strong>ORDEN DEL DÍA</strong></p>
+<br>
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Se presenta y aprueba el siguiente orden del día:
+${ordenDelDiaFormateado.replace(/\n/g, '<br>')}
+
+<br>
+<p align="center"><strong>DELIBERACIONES Y ACUERDOS</strong></p>
+<br>
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Tras la lectura del Orden del Día, se procede a su tratamiento, dando lugar a las siguientes deliberaciones y acuerdos:
+
+${deliberacionesFormateadas.replace(/\n/g, '<br>')}
+
+<br>
+<p align="center"><strong>ACUERDOS Y TAREAS</strong></p>
+<br>
+${acuerdosFormateados.replace(/\n/g, '<br>')}
+
+<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;No habiendo más asuntos que tratar, se levanta la sesión.
+
+<br><br><br>
+| | |
+|:---:|:---:|
+| _____________________________________ | _____________________________________ |
+| **${configuracion.presidente.nombre}** | **${configuracion.secretario.nombre}** |
+| **PRESIDENTE** | **SECRETARIO** |
+`;
+
+    // Llamada a Gemini para la redacción final
+    const responseRedaccion = await fetch(`${GEMINI_API_URL}?key=${GEMINI_API_KEY}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [
+          { parts: [ { text: promptRedaccion } ] }
+        ]
+      })
+    })
+    if (!responseRedaccion.ok) {
+      const errorData = await responseRedaccion.text()
+      return res.status(500).json({ error: 'Error en redacción IA', detalle: errorData })
+    }
+    const dataRedaccion = await responseRedaccion.json()
+    const actaGenerada = dataRedaccion.candidates?.[0]?.content?.parts?.[0]?.text
+
+    // Guardar el acta generada, la estructura y marcar como finalizada
     const actaActualizada = await (Acta as any).findByIdAndUpdate(
       actaId,
-      { 
-        actaGenerada,
-        estado: 'finalizada'
-      },
+      { actaGenerada, estructura: datosEstructurados, estado: 'finalizada' },
       { new: true }
     ).exec()
     
     res.status(200).json({
       acta: actaActualizada,
-      contenidoGenerado: actaGenerada
+      contenidoGenerado: actaGenerada,
+      estructura: datosEstructurados
     })
-    
   } catch (error) {
-    console.error('Error al generar acta con IA:', error)
+    console.error('Error extremo al generar acta con IA:', error)
     res.status(500).json({ error: 'Error interno del servidor' })
   }
 } 

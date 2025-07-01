@@ -10,6 +10,7 @@ export interface IActa extends Document {
   asistentes: string[]
   apuntes: string
   actaGenerada: string
+  estructura: any
   estado: 'borrador' | 'finalizada'
   createdAt: Date
   updatedAt: Date
@@ -51,6 +52,10 @@ const ActaSchema = new Schema<IActa>({
   actaGenerada: {
     type: String,
     default: ''
+  },
+  estructura: {
+    type: Schema.Types.Mixed,
+    default: null
   },
   estado: {
     type: String,
