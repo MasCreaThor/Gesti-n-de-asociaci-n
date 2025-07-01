@@ -725,7 +725,10 @@ const ActasPage = () => {
                 >
                   {/* Header de la tarjeta */}
                   <Box
-                    bg={acta.estado === 'finalizada' ? 'green.50' : 'yellow.50'}
+                    bg={useColorModeValue(
+                      acta.estado === 'finalizada' ? 'green.50' : 'yellow.50',
+                      acta.estado === 'finalizada' ? 'green.900' : 'yellow.900'
+                    )}
                     p={4}
                     borderBottom="1px"
                     borderColor={borderColor}
@@ -752,23 +755,28 @@ const ActasPage = () => {
                             </Badge>
                           )}
                         </HStack>
-                        <Heading size="sm" mb={2} lineHeight="1.2">
+                        <Heading 
+                          size="sm" 
+                          mb={2} 
+                          lineHeight="1.2"
+                          color={useColorModeValue('gray.800', 'white')}
+                        >
                           {acta.titulo}
                         </Heading>
                         <VStack spacing={1} align="start">
-                          <HStack spacing={2} fontSize="sm" color={textColor}>
+                          <HStack spacing={2} fontSize="sm" color={useColorModeValue('gray.600', 'green.200')}>
                             <span>📅</span>
                             <Text>{new Date(acta.fecha).toLocaleDateString('es-CO')}</Text>
                           </HStack>
-                          <HStack spacing={2} fontSize="sm" color={textColor}>
+                          <HStack spacing={2} fontSize="sm" color={useColorModeValue('gray.600', 'green.200')}>
                             <span>🕐</span>
                             <Text>{acta.hora}</Text>
                           </HStack>
-                          <HStack spacing={2} fontSize="sm" color={textColor}>
+                          <HStack spacing={2} fontSize="sm" color={useColorModeValue('gray.600', 'green.200')}>
                             <span>📍</span>
                             <Text>{acta.lugar}</Text>
                           </HStack>
-                          <HStack spacing={2} fontSize="sm" color={textColor}>
+                          <HStack spacing={2} fontSize="sm" color={useColorModeValue('gray.600', 'green.200')}>
                             <span>🏢</span>
                             <Text>{getTipoReunionLegible(acta.tipoReunion)}</Text>
                           </HStack>
@@ -823,13 +831,17 @@ const ActasPage = () => {
                           </Text>
                         </HStack>
                         <Box
-                          bg="green.50"
+                          bg={useColorModeValue('green.50', 'green.900')}
                           p={3}
                           borderRadius="md"
                           border="1px"
-                          borderColor="green.200"
+                          borderColor={useColorModeValue('green.200', 'green.700')}
                         >
-                          <Text fontSize="sm" color="green.700" noOfLines={2}>
+                          <Text 
+                            fontSize="sm" 
+                            color={useColorModeValue('green.700', 'green.200')} 
+                            noOfLines={2}
+                          >
                             Acta generada exitosamente con IA
                           </Text>
                         </Box>
@@ -852,7 +864,7 @@ const ActasPage = () => {
                         <Button
                           size="sm"
                           colorScheme="yellow"
-                          leftIcon={React.createElement(FiEdit, { size: 16 })}
+                          leftIcon={<span>✏️</span>}
                           onClick={() => handleEditActa(acta)}
                         >
                           Editar
@@ -877,7 +889,7 @@ const ActasPage = () => {
                           <Button
                             size="sm"
                             colorScheme="green"
-                            leftIcon={React.createElement(FiDownload, { size: 16 })}
+                            leftIcon={<span>📄</span>}
                             onClick={() => exportarDocx(acta._id)}
                             isLoading={exporting}
                             loadingText="Exportando..."
@@ -888,7 +900,7 @@ const ActasPage = () => {
                         <Button
                           size="sm"
                           colorScheme="red"
-                          leftIcon={React.createElement(FiTrash2, { size: 16 })}
+                          leftIcon={<span>🗑️</span>}
                           onClick={() => handleDeleteActa(acta)}
                         >
                           Eliminar
