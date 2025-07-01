@@ -1085,7 +1085,7 @@ const ActasPage = () => {
                     <strong>Fecha:</strong> {deletingActa?.reunionId?.fecha ? new Date(deletingActa.reunionId.fecha).toLocaleDateString('es-ES') : 'N/A'}
                   </Text>
                   <Text fontSize="sm">
-                    <strong>Estado:</strong> {deletingActa?.generadaPorIA ? 'Generada por IA' : 'Borrador'}
+                    <strong>Estado:</strong> {deletingActa?.estado === 'finalizada' ? 'Finalizada' : 'Borrador'}
                   </Text>
                 </Box>
               </VStack>
