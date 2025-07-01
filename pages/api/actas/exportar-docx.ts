@@ -170,6 +170,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         texto = texto.replace(/<strong>(.*?)<\/strong>/gi, '**$1**')
         // Quitar cualquier otra etiqueta HTML
         texto = texto.replace(/<[^>]+>/g, '')
+        // ELIMINAR tabla de firmas si existe en el texto generado por la IA
+        texto = texto.replace(/\|[\s\S]*?\|[\s\S]*?\|[\s\S]*?\|[\s\S]*?\|[\s\S]*?\|[\s\S]*?\|/g, '')
+        texto = texto.replace(/PRESIDENTE.*SECRETARIO/gi, '')
+        texto = texto.replace(/_{3,}.*_{3,}/g, '')
         // Normalizar saltos de línea
         texto = texto.replace(/\n{2,}/g, '\n')
         // Separar por líneas
@@ -178,8 +182,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         let enSeccionAcuerdos = false
         let contadorLetras = 0
         lineas.forEach(linea => {
-          // Detectar si estamos en la sección de ACUERDOS Y TAREAS
-          if (/acuerdos.*tareas/i.test(linea)) {
+          // Detectar si estamos en la sección de ACUERDOS Y TAREAS (más flexible)
+          if (/acuerdos.*tareas|tareas.*acuerdos/i.test(linea)) {
             enSeccionAcuerdos = true
             contadorLetras = 0
           }
@@ -193,7 +197,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             }))
           } else if (/^\d+\.\s*/.test(linea)) {
             // Lista numerada - ELIMINAR el número existente para evitar duplicación
-            const textoLimpio = linea.replace(/^\d+\.\s*/, '')
+             const textoLimpio = linea.replace(/^\d+\.\s*/, '')
             if (enSeccionAcuerdos) {
               // En ACUERDOS Y TAREAS, usar guiones en lugar de numeración
               parrafos.push(new Paragraph({

@@ -61,46 +61,91 @@ Eres un analista de actas experto y un asistente de estructuración de datos. Tu
 4.  **Resumen de Deliberaciones:** Para cada punto del orden del día, crea un resumen detallado de la discusión. Atribuye cada intervención al nombre correcto del participante que identificaste. Si dentro de un resumen hay una lista de requisitos o puntos, usa el formato markdown con guiones (-) para crear una sublista.
 5.  **Extracción de Acuerdos y Tareas:** Identifica y lista claramente cualquier decisión, acuerdo o tarea pendiente que surja.
 
-**EJEMPLO DE TRANSCRIPCIÓN Y SALIDA ESPERADA:**
+**EJEMPLO MEJORADO DE TRANSCRIPCIÓN Y SALIDA ESPERADA:**
 TRANSCRIPCIÓN:
 """
-Orador 1: Buenas tardes, soy Manuel, presidente de la asociación. Hoy revisaremos el Acuerdo 006 y la elección de representantes.
-Orador 2: Gracias Manuel. ¿Podemos ver el documento?
-Orador 1: Claro, aquí está. El acuerdo establece la creación del Consejo Municipal de Paz.
-Orador 3: ¿Quiénes pueden ser elegidos?
-Orador 1: Cualquier miembro de la sociedad civil que cumpla los requisitos.
-Orador 2: Sugiero que se publique la convocatoria en la web.
-Orador 1: De acuerdo, lo haremos así.
+Orador 1: Buenas tardes, soy Manuel, presidente de la asociación. Hoy tenemos una agenda extensa que incluye revisión del presupuesto, elección de comisiones y varios temas administrativos.
+Orador 2: Gracias Manuel. Soy Darlene, secretaria. Antes de empezar, ¿podemos confirmar la asistencia?
+Orador 1: Claro, tenemos 12 personas presentes. Procedamos con el primer punto.
+Orador 3: Soy Berlín, tesorero. Sobre el presupuesto, necesitamos revisar los gastos del último trimestre. Hay algunas inconsistencias en los reportes.
+Orador 4: ¿Qué tipo de inconsistencias específicamente?
+Orador 3: Principalmente en los gastos de mantenimiento y los honorarios de consultoría. Sugiero que revisemos línea por línea.
+Orador 5: Estoy de acuerdo con Berlín. También noté que faltan algunos recibos de los proveedores.
+Orador 1: Bien, entonces acordamos revisar el presupuesto detalladamente. ¿Quién se encarga?
+Orador 3: Yo puedo liderar la revisión, pero necesito apoyo de la comisión de finanzas.
+Orador 6: Me ofrezco para apoyar. Soy Yulisa, de la comisión de finanzas.
+Orador 1: Perfecto. Pasemos al siguiente punto: elección de comisiones.
+Orador 7: ¿Cuáles son los requisitos para ser miembro de comisión?
+Orador 2: Los requisitos están en el reglamento: ser socio activo, tener disponibilidad de tiempo, y no tener conflictos de interés.
+Orador 8: ¿Y cuánto tiempo dura el cargo?
+Orador 2: Dos años, con posibilidad de reelección por un período más.
+Orador 1: ¿Hay candidatos para las comisiones vacantes?
+Orador 9: Me postulo para la comisión de eventos. Tengo experiencia en organización.
+Orador 10: Yo también me intereso, pero necesito más información sobre las responsabilidades.
+Orador 2: Te puedo enviar el documento con las responsabilidades detalladas.
+Orador 1: Bien, entonces programamos la elección para la próxima reunión. ¿Alguien más tiene algo que agregar sobre este punto?
+Orador 11: Solo recordar que necesitamos actualizar el reglamento de comisiones.
+Orador 1: Correcto, lo incluimos en la agenda de la próxima reunión.
+Orador 12: Sobre los temas administrativos, necesitamos renovar el contrato de limpieza.
+Orador 1: ¿Cuál es el estado actual del contrato?
+Orador 12: Vence en dos meses. El proveedor actual quiere aumentar el precio en un 15%.
+Orador 3: Eso es un incremento significativo. ¿Tenemos otras opciones?
+Orador 12: Sí, tengo tres cotizaciones de otros proveedores. La más competitiva es un 8% menos que el precio actual.
+Orador 1: Entonces evaluemos las tres opciones y tomemos una decisión en la próxima reunión.
+Orador 13: ¿Podemos incluir en la evaluación los criterios de calidad del servicio?
+Orador 1: Por supuesto, es fundamental. ¿Alguien más tiene temas para tratar?
+Orador 14: Solo recordar que la próxima reunión será el 15 del próximo mes.
+Orador 1: Perfecto. Con esto damos por terminada la reunión.
 """
 SALIDA JSON ESPERADA:
 {
   "participantes": [
     { "etiqueta": "Orador 1", "nombreIdentificado": "Manuel" },
-    { "etiqueta": "Orador 2", "nombreIdentificado": "No identificado" },
-    { "etiqueta": "Orador 3", "nombreIdentificado": "No identificado" }
+    { "etiqueta": "Orador 2", "nombreIdentificado": "Darlene" },
+    { "etiqueta": "Orador 3", "nombreIdentificado": "Berlín" },
+    { "etiqueta": "Orador 4", "nombreIdentificado": "No identificado" },
+    { "etiqueta": "Orador 5", "nombreIdentificado": "No identificado" },
+    { "etiqueta": "Orador 6", "nombreIdentificado": "Yulisa" },
+    { "etiqueta": "Orador 7", "nombreIdentificado": "No identificado" },
+    { "etiqueta": "Orador 8", "nombreIdentificado": "No identificado" },
+    { "etiqueta": "Orador 9", "nombreIdentificado": "No identificado" },
+    { "etiqueta": "Orador 10", "nombreIdentificado": "No identificado" },
+    { "etiqueta": "Orador 11", "nombreIdentificado": "No identificado" },
+    { "etiqueta": "Orador 12", "nombreIdentificado": "No identificado" },
+    { "etiqueta": "Orador 13", "nombreIdentificado": "No identificado" },
+    { "etiqueta": "Orador 14", "nombreIdentificado": "No identificado" }
   ],
   "ordenDelDia": [
-    "Revisión del Acuerdo 006",
-    "Elección de representantes de la sociedad civil",
-    "Publicación de la convocatoria"
+    "Revisión del presupuesto del último trimestre",
+    "Elección de comisiones",
+    "Renovación del contrato de limpieza",
+    "Actualización del reglamento de comisiones"
   ],
   "deliberaciones": [
     {
-      "punto": "1. Revisión del Acuerdo 006",
-      "resumen": "Manuel presenta el Acuerdo 006 y explica la creación del Consejo Municipal de Paz."
+      "punto": "1. Revisión del presupuesto del último trimestre",
+      "resumen": "Berlín (tesorero) reporta inconsistencias en los gastos de mantenimiento y honorarios de consultoría. Orador 5 confirma la falta de algunos recibos de proveedores. Se acuerda una revisión detallada línea por línea. Berlín se compromete a liderar la revisión con apoyo de Yulisa de la comisión de finanzas."
     },
     {
-      "punto": "2. Elección de representantes de la sociedad civil",
-      "resumen": "Orador 3 pregunta sobre los requisitos. Manuel responde que cualquier miembro que cumpla los requisitos puede ser elegido."
+      "punto": "2. Elección de comisiones",
+      "resumen": "Se discuten los requisitos para ser miembro de comisión: ser socio activo, tener disponibilidad de tiempo y no tener conflictos de interés. El cargo dura dos años con posibilidad de reelección. Orador 9 se postula para la comisión de eventos. Orador 10 solicita más información sobre responsabilidades. Darlene se compromete a enviar el documento detallado. Se programa la elección para la próxima reunión."
     },
     {
-      "punto": "3. Publicación de la convocatoria",
-      "resumen": "Orador 2 sugiere publicar la convocatoria en la web. Manuel acepta la sugerencia."
+      "punto": "3. Renovación del contrato de limpieza",
+      "resumen": "El contrato actual vence en dos meses. El proveedor actual solicita un aumento del 15%. Orador 12 presenta tres cotizaciones alternativas, siendo la más competitiva un 8% menor al precio actual. Se acuerda evaluar las tres opciones considerando criterios de calidad del servicio en la próxima reunión."
+    },
+    {
+      "punto": "4. Actualización del reglamento de comisiones",
+      "resumen": "Orador 11 solicita actualizar el reglamento de comisiones. Se incluye este tema en la agenda de la próxima reunión."
     }
   ],
   "acuerdosYTareas": [
-    "Publicar la convocatoria en la web.",
-    "Realizar la elección de representantes."
+    "Berlín y Yulisa realizarán revisión detallada del presupuesto del último trimestre",
+    "Darlene enviará documento con responsabilidades detalladas de comisiones a Orador 10",
+    "Programar elección de comisiones para la próxima reunión",
+    "Evaluar tres cotizaciones de limpieza considerando calidad del servicio",
+    "Incluir actualización del reglamento de comisiones en agenda de próxima reunión",
+    "Próxima reunión programada para el 15 del próximo mes"
   ]
 }
 
@@ -246,14 +291,14 @@ ${deliberacionesFormateadas.replace(/\n/g, '<br>')}
 ${acuerdosFormateados.replace(/\n/g, '<br>')}
 
 <br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;No habiendo más asuntos que tratar, se levanta la sesión.
-
-<br><br><br>
-| | |
-|:---:|:---:|
-| _____________________________________ | _____________________________________ |
-| **${configuracion.presidente.nombre}** | **${configuracion.secretario.nombre}** |
-| **PRESIDENTE** | **SECRETARIO** |
+**INSTRUCCIONES ESPECÍFICAS PARA LA PARTE FINAL:**
+- Basándote en la información de los apuntes originales, redacta una conclusión natural que incluya:
+  - La hora real de finalización si se menciona en los apuntes
+  - Cualquier anuncio o recordatorio importante (próxima reunión, fechas límite, etc.)
+  - Un cierre apropiado que refleje el tono y contexto de la reunión
+- Si no hay información específica sobre la finalización, usa el texto estándar: "No habiendo más asuntos que tratar, se levanta la sesión."
+- NO incluyas la tabla de firmas, solo la conclusión del acta.
+- Mantén el formato profesional con sangrías (&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;) y saltos de línea apropiados.
 `;
 
     // Llamada a Gemini para la redacción final
