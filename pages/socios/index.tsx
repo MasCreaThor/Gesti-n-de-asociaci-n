@@ -20,6 +20,7 @@ import {
 import MainLayout from '../../components/layout/MainLayout'
 import SocioViewModal from '../../components/SocioViewModal'
 import SocioEditModal from '../../components/SocioEditModal'
+import PDFViewerModal from '../../components/PDFViewerModal'
 import { useAuth } from '../../context/AuthContext'
 import { useRouter } from 'next/router'
 
@@ -53,6 +54,9 @@ export default function SociosPage() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [socioToDelete, setSocioToDelete] = useState<Socio | null>(null)
+  const [isPDFModalOpen, setIsPDFModalOpen] = useState(false)
+  const [selectedPDFUrl, setSelectedPDFUrl] = useState('')
+  const [selectedPDFName, setSelectedPDFName] = useState('')
 
   // Colores para modo oscuro
   const cardBg = useColorModeValue('white', 'gray.700')
@@ -269,7 +273,11 @@ export default function SociosPage() {
                           <Button 
                             size="sm" 
                             colorScheme="purple" 
-                            onClick={() => window.open(socio.documentoPDF, '_blank')}
+                            onClick={() => {
+                              setSelectedPDFUrl(socio.documentoPDF)
+                              setSelectedPDFName(`${socio.nombre}_${socio.apellido}_documento.pdf`)
+                              setIsPDFModalOpen(true)
+                            }}
                           >
                             📄 PDF
                           </Button>
@@ -340,10 +348,22 @@ export default function SociosPage() {
                 </Button>
               </AlertDialogFooter>
             </AlertDialogContent>
-          </AlertDialogOverlay>
-        </AlertDialog>
-      </Box>
-    </MainLayout>
-  )
+                  </AlertDialogOverlay>
+      </AlertDialog>
+
+      {/* Modal para visualizar PDF */}
+      <PDFViewerModal
+        isOpen={isPDFModalOpen}
+        onClose={() => {
+          setIsPDFModalOpen(false)
+          setSelectedPDFUrl('')
+          setSelectedPDFName('')
+        }}
+        pdfUrl={selectedPDFUrl}
+        fileName={selectedPDFName}
+      />
+    </Box>
+  </MainLayout>
+)
 }
  
