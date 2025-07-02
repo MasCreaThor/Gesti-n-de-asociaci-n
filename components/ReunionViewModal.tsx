@@ -84,7 +84,8 @@ export default function ReunionViewModal({
     weekday: 'long',
     year: 'numeric',
     month: 'long',
-    day: 'numeric'
+    day: 'numeric',
+    timeZone: 'UTC'
   })
 
   return (

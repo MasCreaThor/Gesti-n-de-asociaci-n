@@ -366,7 +366,12 @@ Generado el: ${new Date().toLocaleDateString('es-CO')}
             <Text fontSize="lg" fontWeight="bold">{acta.titulo}</Text>
             <HStack spacing={4}>
               <Text fontSize="sm" color={textColor}>
-                {new Date(acta.fecha).toLocaleDateString('es-CO')} - {acta.hora}
+                {new Date(acta.fecha).toLocaleDateString('es-CO', { 
+              year: 'numeric',
+              month: 'long',
+              day: 'numeric',
+              timeZone: 'UTC'
+            })} - {acta.hora}
               </Text>
               <Text fontSize="sm" color={textColor}>
                 {acta.lugar} • {acta.tipoReunion}
@@ -391,7 +396,12 @@ Generado el: ${new Date().toLocaleDateString('es-CO')}
               <Text fontWeight="medium" mb={2}>Información de la Reunión:</Text>
               <VStack spacing={2} align="stretch" fontSize="sm">
                 <Text><strong>Título:</strong> {acta.titulo}</Text>
-                <Text><strong>Fecha:</strong> {new Date(acta.fecha).toLocaleDateString('es-CO')}</Text>
+                <Text><strong>Fecha:</strong> {new Date(acta.fecha).toLocaleDateString('es-CO', { 
+                  year: 'numeric',
+                  month: 'long',
+                  day: 'numeric',
+                  timeZone: 'UTC'
+                })}</Text>
                 <Text><strong>Hora:</strong> {acta.hora}</Text>
                 <Text><strong>Lugar:</strong> {acta.lugar}</Text>
                 <Text><strong>Tipo:</strong> {acta.tipoReunion}</Text>

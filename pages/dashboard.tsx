@@ -110,7 +110,12 @@ export default function Dashboard() {
       case 'nuevo_socio':
         return `${item.nombre} se registró ${formatTimeAgo(item.fecha)}`
       case 'reunion':
-        return `Reunión: ${item.titulo} - ${new Date(item.fecha).toLocaleDateString()}`
+        return `Reunión: ${item.titulo} - ${new Date(item.fecha).toLocaleDateString('es-CO', { 
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric',
+          timeZone: 'UTC'
+        })}`
       case 'acta':
         return `Acta: ${item.titulo} creada ${formatTimeAgo(item.fecha)}`
       default:

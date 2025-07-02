@@ -203,6 +203,24 @@ export default function ReunionesPage() {
     }
   }
 
+  const formatearFecha = (fechaString: string): string => {
+    try {
+      // Crear la fecha desde el string ISO
+      const fecha = new Date(fechaString)
+      
+      // Formatear la fecha en español de Colombia usando UTC para evitar conversión de zona horaria
+      return fecha.toLocaleDateString('es-CO', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        timeZone: 'UTC'
+      })
+    } catch (error) {
+      // Si hay algún error, devolver la fecha original
+      return fechaString
+    }
+  }
+
   if (isLoading) {
     return (
       <MainLayout>
@@ -262,7 +280,7 @@ export default function ReunionesPage() {
                       {reunion.descripcion}
                     </p>
                     <div style={{ fontSize: '14px', color: labelColor }}>
-                      <div>📅 {new Date(reunion.fecha).toLocaleDateString()} a las {convertirHoraA12Horas(reunion.hora)}</div>
+                      <div>📅 {formatearFecha(reunion.fecha)} a las {convertirHoraA12Horas(reunion.hora)}</div>
                       <div>📍 {reunion.lugar}</div>
                       <div>📝 {getTipoReunion(reunion.tipo)}</div>
                       <div style={{ marginTop: '5px' }}>
