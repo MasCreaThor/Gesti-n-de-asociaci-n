@@ -1,9 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
-import { v2 as cloudinary } from 'cloudinary'
-
-cloudinary.config({
-  cloudinary_url: process.env.CLOUDINARY_URL,
-})
+import { bucket } from '../../lib/firebase'
+import { v4 as uuidv4 } from 'uuid'
 
 export const config = {
   api: {
@@ -37,26 +34,25 @@ export default async function handler(
     const base64Data = file.replace(/^data:application\/pdf;base64,/, '')
     const buffer = Buffer.from(base64Data, 'base64')
 
-    // Subir a Cloudinary
-    const uploadResponse = await new Promise<any>((resolve, reject) => {
-      cloudinary.uploader.upload_stream(
-        {
-          resource_type: 'raw', // Para PDF y otros archivos
-          folder: 'asociacion/pdfs',
-          public_id: fileName.replace(/\.pdf$/i, ''),
-          format: 'pdf',
-        },
-        (error, result) => {
-          if (error) return reject(error)
-          resolve(result)
-        }
-      ).end(buffer)
+    // Nombre único para evitar colisiones
+    const uniqueFileName = `${uuidv4()}_${fileName}`
+    const fileRef = bucket.file(`socios/pdfs/${uniqueFileName}`)
+
+    // Subir a Firebase Storage
+    await fileRef.save(buffer, {
+      metadata: {
+        contentType: 'application/pdf',
+      },
+      public: true, // Hace el archivo accesible públicamente
     })
+
+    // Obtener URL pública
+    const publicUrl = `https://storage.googleapis.com/${bucket.name}/socios/pdfs/${uniqueFileName}`
 
     res.status(200).json({
       message: 'Archivo subido exitosamente',
-      fileUrl: uploadResponse.secure_url,
-      fileName: uploadResponse.public_id + '.pdf',
+      fileUrl: publicUrl,
+      fileName: uniqueFileName,
     })
   } catch (error) {
     console.error('Error uploading file:', error)

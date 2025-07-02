@@ -1,6 +1,7 @@
 import { NextApiRequest, NextApiResponse } from 'next'
 import dbConnect from '../../../lib/mongodb'
 import Socio from '../../../lib/models/Socio'
+import { bucket } from '../../../lib/firebase'
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const { id } = req.query
@@ -34,6 +35,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         })
       }
 
+      // Obtener el socio actual antes de actualizar
+      const socioActual = await Socio.findById(id)
+      let pdfAnterior = socioActual?.documentoPDF
+
       // Preparar operaciones de actualización
       const updateOperations: any = {
         $set: {
@@ -64,6 +69,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       // Si no hay campos para unset, eliminar la operación
       if (Object.keys(updateOperations.$unset).length === 0) {
         delete updateOperations.$unset
+      }
+
+      // Eliminar el PDF anterior si se subió uno nuevo
+      if (pdfAnterior && documentoPDF && pdfAnterior !== documentoPDF) {
+        try {
+          // Extraer el nombre del archivo del URL anterior
+          const match = pdfAnterior.match(/socios\/pdfs\/(.+)$/)
+          if (match && match[1]) {
+            const nombreArchivoAnterior = `socios/pdfs/${match[1]}`
+            await bucket.file(nombreArchivoAnterior).delete()
+            console.log('Archivo PDF anterior eliminado:', nombreArchivoAnterior)
+          }
+        } catch (err) {
+          console.error('Error eliminando el PDF anterior:', err)
+        }
       }
 
       console.log('Operaciones de actualización:', updateOperations) // Para debugging
@@ -99,6 +119,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
       if (!socioEliminado) {
         return res.status(404).json({ message: 'Socio no encontrado' })
+      }
+
+      // Eliminar el PDF relacionado si existe
+      if (socioEliminado.documentoPDF) {
+        try {
+          const match = socioEliminado.documentoPDF.match(/socios\/pdfs\/(.+)$/)
+          if (match && match[1]) {
+            const nombreArchivo = `socios/pdfs/${match[1]}`
+            await bucket.file(nombreArchivo).delete()
+            console.log('Archivo PDF eliminado al borrar socio:', nombreArchivo)
+          }
+        } catch (err) {
+          console.error('Error eliminando el PDF al borrar socio:', err)
+        }
       }
 
       return res.status(200).json({

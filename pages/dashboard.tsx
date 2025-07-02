@@ -9,6 +9,9 @@ import {
   HStack,
   Button,
   useColorModeValue,
+  Spinner,
+  Alert,
+  AlertIcon,
 } from '@chakra-ui/react'
 import MainLayout from '../components/layout/MainLayout'
 import { useAuth } from '../context/AuthContext'
@@ -17,19 +20,37 @@ import { useRouter } from 'next/router'
 interface DashboardStats {
   totalSocios: number
   sociosActivos: number
+  sociosInactivos: number
   totalReuniones: number
   reunionesEsteMes: number
+  reunionesMesAnterior: number
+  porcentajeParticipacion: number
+  crecimientoSocios: number
+  cambioReuniones: number
+}
+
+interface ActividadItem {
+  nombre?: string
+  titulo?: string
+  fecha: Date
+  tipo: 'nuevo_socio' | 'reunion' | 'acta'
+}
+
+interface DashboardData {
+  stats: DashboardStats
+  actividad: {
+    sociosRecientes: ActividadItem[]
+    reunionesRecientes: ActividadItem[]
+    actasRecientes: ActividadItem[]
+  }
 }
 
 export default function Dashboard() {
   const { isAuthenticated, isLoading } = useAuth()
   const router = useRouter()
-  const [stats, setStats] = useState<DashboardStats>({
-    totalSocios: 0,
-    sociosActivos: 0,
-    totalReuniones: 0,
-    reunionesEsteMes: 0,
-  })
+  const [dashboardData, setDashboardData] = useState<DashboardData | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   // Colores para modo oscuro
   const cardBg = useColorModeValue('white', 'gray.700')
@@ -45,21 +66,77 @@ export default function Dashboard() {
   }, [isAuthenticated, isLoading, router])
 
   useEffect(() => {
-    // Aquí cargaríamos las estadísticas desde la API
-    // Por ahora usamos datos de ejemplo
-    setStats({
-      totalSocios: 25,
-      sociosActivos: 22,
-      totalReuniones: 12,
-      reunionesEsteMes: 2,
-    })
-  }, [])
+    const fetchDashboardData = async () => {
+      if (!isAuthenticated) return
+
+      try {
+        setLoading(true)
+        setError(null)
+        
+        const response = await fetch('/api/dashboard/stats')
+        if (!response.ok) {
+          throw new Error('Error al cargar las estadísticas')
+        }
+        
+        const data = await response.json()
+        setDashboardData(data)
+      } catch (err) {
+        console.error('Error fetching dashboard data:', err)
+        setError(err instanceof Error ? err.message : 'Error desconocido')
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchDashboardData()
+  }, [isAuthenticated])
+
+  const formatTimeAgo = (date: Date) => {
+    const now = new Date()
+    const diffInHours = Math.floor((now.getTime() - new Date(date).getTime()) / (1000 * 60 * 60))
+    
+    if (diffInHours < 1) return 'Hace menos de 1 hora'
+    if (diffInHours < 24) return `Hace ${diffInHours} hora${diffInHours > 1 ? 's' : ''}`
+    
+    const diffInDays = Math.floor(diffInHours / 24)
+    if (diffInDays < 7) return `Hace ${diffInDays} día${diffInDays > 1 ? 's' : ''}`
+    
+    const diffInWeeks = Math.floor(diffInDays / 7)
+    return `Hace ${diffInWeeks} semana${diffInWeeks > 1 ? 's' : ''}`
+  }
+
+  const getActivityText = (item: ActividadItem) => {
+    switch (item.tipo) {
+      case 'nuevo_socio':
+        return `${item.nombre} se registró ${formatTimeAgo(item.fecha)}`
+      case 'reunion':
+        return `Reunión: ${item.titulo} - ${new Date(item.fecha).toLocaleDateString()}`
+      case 'acta':
+        return `Acta: ${item.titulo} creada ${formatTimeAgo(item.fecha)}`
+      default:
+        return 'Actividad reciente'
+    }
+  }
+
+  const getActivityIcon = (tipo: string) => {
+    switch (tipo) {
+      case 'nuevo_socio':
+        return '👤'
+      case 'reunion':
+        return '📅'
+      case 'acta':
+        return '📄'
+      default:
+        return '📋'
+    }
+  }
 
   if (isLoading) {
     return (
       <MainLayout>
         <Box textAlign="center" py={10}>
-          <Text>Cargando...</Text>
+          <Spinner size="xl" />
+          <Text mt={4}>Cargando...</Text>
         </Box>
       </MainLayout>
     )
@@ -68,6 +145,50 @@ export default function Dashboard() {
   if (!isAuthenticated) {
     return null
   }
+
+  if (loading) {
+    return (
+      <MainLayout>
+        <Box textAlign="center" py={10}>
+          <Spinner size="xl" />
+          <Text mt={4}>Cargando estadísticas...</Text>
+        </Box>
+      </MainLayout>
+    )
+  }
+
+  if (error) {
+    return (
+      <MainLayout>
+        <Alert status="error" mb={6}>
+          <AlertIcon />
+          Error al cargar las estadísticas: {error}
+        </Alert>
+        <Button onClick={() => window.location.reload()}>
+          Reintentar
+        </Button>
+      </MainLayout>
+    )
+  }
+
+  if (!dashboardData) {
+    return (
+      <MainLayout>
+        <Box textAlign="center" py={10}>
+          <Text>No se pudieron cargar las estadísticas</Text>
+        </Box>
+      </MainLayout>
+    )
+  }
+
+  const { stats, actividad } = dashboardData
+
+  // Combinar toda la actividad reciente y ordenar por fecha
+  const actividadReciente = [
+    ...actividad.sociosRecientes,
+    ...actividad.reunionesRecientes,
+    ...actividad.actasRecientes
+  ].sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime()).slice(0, 5)
 
   return (
     <MainLayout>
@@ -84,7 +205,9 @@ export default function Dashboard() {
                 <Box>
                   <Text fontSize="sm" color={textColor}>Total de Socios</Text>
                   <Text fontSize="2xl" fontWeight="bold">{stats.totalSocios}</Text>
-                  <Text fontSize="xs" color="green.500">+23.36%</Text>
+                  <Text fontSize="xs" color={stats.crecimientoSocios >= 0 ? "green.500" : "red.500"}>
+                    {stats.crecimientoSocios >= 0 ? '+' : ''}{stats.crecimientoSocios}% este mes
+                  </Text>
                 </Box>
               </HStack>
             </Box>
@@ -97,7 +220,7 @@ export default function Dashboard() {
                 <Box>
                   <Text fontSize="sm" color={textColor}>Socios Activos</Text>
                   <Text fontSize="2xl" fontWeight="bold">{stats.sociosActivos}</Text>
-                  <Text fontSize="xs" color="green.500">88% de participación</Text>
+                  <Text fontSize="xs" color="green.500">{stats.porcentajeParticipacion}% de participación</Text>
                 </Box>
               </HStack>
             </Box>
@@ -123,7 +246,9 @@ export default function Dashboard() {
                 <Box>
                   <Text fontSize="sm" color={textColor}>Reuniones Este Mes</Text>
                   <Text fontSize="2xl" fontWeight="bold">{stats.reunionesEsteMes}</Text>
-                  <Text fontSize="xs" color="red.500">1 menos que el mes pasado</Text>
+                  <Text fontSize="xs" color={stats.cambioReuniones >= 0 ? "green.500" : "red.500"}>
+                    {stats.cambioReuniones >= 0 ? '+' : ''}{stats.cambioReuniones}% vs mes anterior
+                  </Text>
                 </Box>
               </HStack>
             </Box>
@@ -137,24 +262,24 @@ export default function Dashboard() {
                 Actividad Reciente
               </Heading>
               <VStack align="stretch" gap={3}>
-                <Box p={3} bg={activityBg} borderRadius="md">
-                  <Text fontWeight="medium">Nuevo socio registrado</Text>
-                  <Text fontSize="sm" color={textColor}>
-                    Juan Pérez se registró hace 2 horas
+                {actividadReciente.length > 0 ? (
+                  actividadReciente.map((item, index) => (
+                    <Box key={index} p={3} bg={activityBg} borderRadius="md">
+                      <HStack>
+                        <Text fontSize="lg">{getActivityIcon(item.tipo)}</Text>
+                        <Box flex={1}>
+                          <Text fontWeight="medium" fontSize="sm">
+                            {getActivityText(item)}
+                          </Text>
+                        </Box>
+                      </HStack>
+                    </Box>
+                  ))
+                ) : (
+                  <Text color={mutedTextColor} textAlign="center" py={4}>
+                    No hay actividad reciente
                   </Text>
-                </Box>
-                <Box p={3} bg={activityBg} borderRadius="md">
-                  <Text fontWeight="medium">Reunión programada</Text>
-                  <Text fontSize="sm" color={textColor}>
-                    Asamblea general el próximo viernes
-                  </Text>
-                </Box>
-                <Box p={3} bg={activityBg} borderRadius="md">
-                  <Text fontWeight="medium">Documento actualizado</Text>
-                  <Text fontSize="sm" color={textColor}>
-                    María García actualizó su documento de identidad
-                  </Text>
-                </Box>
+                )}
               </VStack>
             </Box>
           </GridItem>

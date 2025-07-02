@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React from 'react'
 import {
   Modal,
   ModalOverlay,
@@ -14,7 +14,6 @@ import {
   Button,
   Divider,
 } from '@chakra-ui/react'
-import PDFViewerModal from './PDFViewerModal'
 
 interface Socio {
   _id: string
@@ -38,8 +37,6 @@ interface SocioViewModalProps {
 }
 
 export default function SocioViewModal({ isOpen, onClose, socio }: SocioViewModalProps) {
-  const [isPDFModalOpen, setIsPDFModalOpen] = useState(false)
-
   if (!socio) return null
 
   return (
@@ -114,7 +111,7 @@ export default function SocioViewModal({ isOpen, onClose, socio }: SocioViewModa
                   <Button
                     colorScheme="purple"
                     size="sm"
-                    onClick={() => setIsPDFModalOpen(true)}
+                    onClick={() => window.open(socio.documentoPDF, '_blank')}
                     leftIcon={<span>📄</span>}
                   >
                     Ver Documento PDF
@@ -147,14 +144,6 @@ export default function SocioViewModal({ isOpen, onClose, socio }: SocioViewModa
           </VStack>
         </ModalBody>
       </ModalContent>
-      
-      {/* Modal para visualizar PDF */}
-      <PDFViewerModal
-        isOpen={isPDFModalOpen}
-        onClose={() => setIsPDFModalOpen(false)}
-        pdfUrl={socio.documentoPDF}
-        fileName={`${socio.nombre}_${socio.apellido}_documento.pdf`}
-      />
     </Modal>
   )
 } 
